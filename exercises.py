@@ -34,9 +34,9 @@ def train_perceptron(activation, cases, epochs, learning_rate):
             learning_coefficient = learning_rate * (expected - actual)
             adjusted_weights = np.add(weights, np.multiply(inputs, learning_coefficient))
             adjusted_bias = bias + learning_coefficient
-            # print(f"epoch={epoch}, inputs={inputs}, actual={actual}, expected={expected}, weights={weights}, "
-            #       f"bias={bias}, learning_coefficient={learning_coefficient}, "
-            #       f"adjusted_weights={adjusted_weights}, adjusted_bias={adjusted_bias}")
+            print(f"epoch={epoch}, inputs={inputs}, actual={actual}, expected={expected}, weights={weights}, "
+                  f"bias={bias}, learning_coefficient={learning_coefficient}, "
+                  f"adjusted_weights={adjusted_weights}, adjusted_bias={adjusted_bias}")
             perceptron = initialize_perceptron(adjusted_weights, adjusted_bias, activation)
     return perceptron
 
@@ -69,11 +69,9 @@ def xor_truth_table():
 
 
 def train():
-    # or_perceptron = train_perceptron(step_function, or_truth_table(), 10, 0.3)
-    and_perceptron = train_perceptron(relu, and_truth_table(), 10000, 0.1)
-    # xor_perceptron = train_perceptron(step_function, xor_truth_table(), 10, 0.1)
-
-    print(and_perceptron(np.array([1, 1]))[0])
+    or_perceptron = train_perceptron(step_function, or_truth_table(), 10, 0.3)
+    and_perceptron = train_perceptron(relu, and_truth_table(), 10, 0.1)
+    xor_perceptron = train_perceptron(step_function, xor_truth_table(), 10, 0.1)
 
 
 if __name__ == '__main__':
