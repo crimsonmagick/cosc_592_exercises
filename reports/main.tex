@@ -2,13 +2,12 @@
 \usepackage{geometry}
 \geometry{a4paper, margin=1in}
 \usepackage{graphicx}
+\usepackage[colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue]{hyperref}
 
-
-
-\title{Project Proposal: Research/App}
+\title{Project Proposal: Novel Methods for Determining Neuron Sensitivity in Large Language Models}
 \author{
   [Welby Seely] \\
-  \texttt{[wseely@example.com]}
+  \texttt{[wseely@emich.edu]}
 }
 \date{\today}
 
@@ -16,15 +15,31 @@
 
 \maketitle
 
-
-
 \section*{Introduction}
-What problem do you want to solve? Why is it significant?
+With the advent of the transformer model and its popularization through services like ChatGPT, Large Language Models (LLMs) are becoming ubiquitous.
+LLM integration with search engines like Bing~\cite{APNews2024Microsoft}, integrated development environments such as IntelliJ~\cite{anderson_jetbrains_2023}, and standard smartphone texting apps like Google Messages~\cite{msn_gemini_2024} are just a few examples.
+
+As LLMs are increasingly put into production at scale, energy consumption and costs are skyrocketing, with some data centers now planning to build dedicated nuclear reactors to handle this alarmingly voracious power demand~\cite{CNBC2024Oracle}.
+
+Scaling power generation to meet demand for these LLMs is treating the symptom, not the fundamental cause of these energy issues: the efficient use of computational capacity and the minimization of power consumption by the LLM itself.
+
+A major class of optimization is predicated on Neuron Sensitivity, the responsiveness of a neuron to changes in its inputs and parameters.
+The idea is that not all neurons (or parameters) contribute equally to a model's predictions.
+Pruning, knowledge distillation, and sparse training techniques are all examples of optimizations and approximations that rely on this idea.
+Targeting less critical parameters for approximation or elimination shows great promise in terms of improving energy efficiency.
+For example, nVidia's Llama-3.1-Minitron model, through the use of pruning and distillation, is able to double or even triple inference throughput~\cite{sreenivas2024llm}.
+This optimization is only made possible by first computing the importance of elements of the model, ultimately determining sensitivity of neurons in aggregate.
+
+The more that neuron sensitivity methodologies are improved, the greater are the gains in efficiency that can be realized.
+The goal of this research is to:
+\begin{enumerate}
+    \item understand current methodologies for determining neuron sensitivity in LLMs
+    \item explore improvements that can be made to more accurately and more efficiently determine neuron sensitivity in LLMs
+\end{enumerate}
+
+The intent is that this research will be a first step towards innovating and improving optimizations for LLMs, reducing power consumption and enabling the models to run on lower powered hardware.
 
 \section*{Related Works}
-
-I will now cite Ian.~\cite{goodfellow2016deep}
-
 \begin{itemize}
     \item Summarize what has already been done in this area
     \item Mention key studies or findings related to the problem
@@ -51,7 +66,7 @@ Provide a brief overview of any initial data you have identified
 \end{itemize}
 
 
-\bibliographystyle{plain}
+\bibliographystyle{plainurl}
 \bibliography{bibliography}
 
 \end{document}
