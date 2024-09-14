@@ -75,29 +75,70 @@ Additionally, the fast pace at which research on and advancements to LLMs makes 
 The research listed so far has been mostly oriented around coupling sensitivity/importance analysis to the specific methods of optimization, or even specific domains of problems (e.g. geospatial or medical).
 This narrow scope makes it more difficult to study neuron sensitivity in LLMs in a more holistic manner.
 Some optimization solutions may be more difficult to find because of the disparate nature of this knowledge.
-More modern consolidated articles and knowledgebases similar to the 2018 "Methods for Interpreting and Understanding Deep Neural Networks"~\cite{montavon2018methods} would be of great help in this endeavor.
+More modern consolidated articles and knowledgebases similar to the 2018 Methods for Interpreting and Understanding Deep Neural Networks~\cite{montavon2018methods} would be of great help in this endeavor.
 
 \section*{Initial Methodology Plan}
-\begin{itemize}
-    \item Present your proposed methodology or approach to tackle the problem
-    \item Mention any techniques or tools you plan to use
-    \item Explain why this approach is better than existing methods
-\end{itemize}
+As mentioned prior, the goals of this research are twofold regarding neuron sensitivity and network analysis: first, understand current methodologies, second, explore improvements.
+To accomplish this, an understanding of sensitivity analysis in simple neural networks must be achieved.
+From there, the current sensitivity analysis techniques for DNNs and LLMs listed prior must be explored in depth, and aggregated into a single source.
+Finally, a novel method of systematic sensitivity analysis will be explored, a synthesis and progression of the research.
+Publicly available LLMs, such as Llama3, will be used as test data for sensitivity analysis.
+\newline
+\newline
+Tools used may include:
 
+\begin{itemize}
+    \item PyCharm~\cite{pycharm_2024}
+    \subitem Personally Favored IDE for Python Development
+    \item PyTorch~\cite{pytorch_2024}
+    \subitem For neural network construction and analysis
+    \item TensorFlow~\cite{tensorflow_2024}
+    \subitem For neural network construction and analysis
+    \item TensorBoard~\cite{tensorboard_2024}
+    \subitem For neural network visualization
+    \item Netron~\cite{netron_2024}
+    \subitem For neural network visualization
+    \item ChatGPT~\cite{chatgpt_2024}
+    \subitem For help with misc tasks
+    \item Llama3~\cite{meta_llama_3_8B_2024}
+    \subitem For help with misc tasks
+    \item llama.cpp~\cite{gerganov_llama_cpp}
+    \subitem For use of its analysis tools vis a vis quantization
+\end{itemize}
 
 \section*{Preliminary Data}
-Provide a brief overview of any initial data you have identified
+Large Language Models:
 
-
-\section*{Project Timeline}
 \begin{itemize}
-    \item List the key milestones and deadlines for your project
-    \item Break down the timeline into phases (e.g., data collection, analysis, reporting)
-    \item Include expected completion dates for each stage
+    \item Llama3~\cite{meta_llama_3_8B_2024}
+    \item Bert~\cite{bert_base_cased_2024}
+    \item nVidia's Llama3 Minitron~\cite{llama_3_1_minitron_2024}
 \end{itemize}
 
+The Pen Machine Learning Benchmark datasets may be useful when testing neural networks\cite{Olson2017PMLB}.
+
+\section*{Research Project Timeline}
+\begin{enumerate}
+    \item Background Research
+    \subitem Gain foundational knowledge in sensitivity analysis within neural networks
+    \subitem Completion date: Oct 4
+    \item Research Current Methodologies
+    \subitem Dive deeper into sensitivity analysis techniques for DNN and LLMs
+    \subitem Completion date: Oct 18
+    \item Aggregate Sensitivity Analysis Techniques
+    \subitem Completion date: Oct 25
+    \item Exploration of Novel Methodologies
+    \subitem Brainstorm and propose potential improvements or new approaches to sensitivity analysis
+    \subitem Completion date: Nov 8
+    \item Testing with LLMs
+    \subitem Apply novel methodologies to publicly available LLMs
+    \subitem Completion date: Nov 22
+    \item Refinement and Analysis
+    \subitem Refine methodology based on testing, document, and prepare presentation
+    \item Completion date: Dec 4
+\end{enumerate}
 
 \bibliographystyle{plainurl}
 \bibliography{bibliography}
-
+\thanks Thanks to ChatGPT for helping provide some ideas on subjects to look into, helping brainstorm a timeline, and generating occasionally correct bibtex citations for websites.
 \end{document}
