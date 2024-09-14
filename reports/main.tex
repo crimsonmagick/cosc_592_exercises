@@ -41,46 +41,41 @@ The intent is that this research will be a first step towards innovating and imp
 
 \section*{Related Works}
 \subsection*{Current Techniques}
+These are some Deep Neural Network (DNN) techniques that are in use for identifying the importance of either individual neurons or larger components in a DNN. While some of the identified articles are oriented around Convolutional Neural Networks, the techniques should still apply to LLMs (to varying degrees of efficacy.)
+
 \begin{itemize}
-    \item Neuron Importance Analysis
+    \item Coupled Structure Analysis
+    \subitem Identifies dependency-based structures, in the context of pruning~\cite{ma2023llm}
     \item Activation Maximization
+    \subitem Optimize an input to maximize the activation of a specific neuron or neuron layer
     \item Saliency Maps
+    \subitem Visualize Neuron sensitivity by highlighting inputs that most affect a particular neuron or output~\cite{hsu2023explainable}
     \item Layer-wise Relevance Propagation
-    \item Adversarial Training
-    \item Gradient Regularization
-    \item Gradient Clipping
-    \item Adaptive Learning Rates
-    \item Sparsity Induction:
-    \item Regularization Techniques
-    \item Sparse Transformers
-    \item Self-Attention Analysis
-    \item Integrated Gradients: Quantifies feature importance by integrating gradients along the path from a baseline input to the actual input.
-    \item SHAP Values
-    \item Mechanistic Interpretability: Circuit Analysis and Neuron-Level Analysis
-    \item Sensitivity-Aware Quantization
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    \subitem Similar to Saliency Maps, decomposes the prediction of a network back to the individual input features~\cite{jia2022interpreting}
+    \item Self-Attention Analysis (LLMs)
+    \subitem Sensitivity is represented by attention weights associated with an attention head, which dictates the degree of influence of each token in a sequence model~\cite{shi2021sparsebert}
+    \item Integrated Gradients
+    \subitem Quantifies feature importance by integrating gradients along the path from a baseline input to the actual input~\cite{sundararajan2017axiomatic}
+    \item SHAP Values (SHapley Additive exPlanation)
+    \subitem Quantifies sensitivity by assigning a contribution score to each input feature based on its impact on the model’s output~\cite{nohara2022explanation}
+    \item Mechanistic Interpretability
+    \subitem Maps out neural circuits in order to determine which parts of a model are responsible for specific capabilities (e.g.\ arithmetic, semantic relationships between words)~\cite{singh2024rethinking}
 \end{itemize}
 
-\begin{itemize}
-    \item Summarize what has already been done in this area
-    \item Mention key studies or findings related to the problem
-    \item Identify limitations in existing approaches or research
-\end{itemize}
+Each of these articles will be analyzed in greater depth as a part of the research process.
+
+\subsection*{Current Challenges}
+
+The sheer size of LLMs challenges each of the techniques listed prior.
+For example, computing gradient information on modern LLMs is prohibitively memory and compute-intensive~\cite{muralidharan2024compact}, and analyzing individual neurons becomes logistically challenging to an extreme, making techniques like Activation Maximization less viable.
+
+Additionally, the fast pace at which research on and advancements to LLMs makes it difficult to get a holistic view on where the field is at, which is detailed more below.
+
+\subsection*{Limitations in Current Research}
+The research listed so far has been mostly oriented around coupling sensitivity/importance analysis to the specific methods of optimization, or even specific domains of problems (e.g. geospatial or medical).
+This narrow scope makes it more difficult to study neuron sensitivity in LLMs in a more holistic manner.
+Some optimization solutions may be more difficult to find because of the disparate nature of this knowledge.
+More modern consolidated articles and knowledgebases similar to the 2018 "Methods for Interpreting and Understanding Deep Neural Networks"~\cite{montavon2018methods} would be of great help in this endeavor.
 
 \section*{Initial Methodology Plan}
 \begin{itemize}
