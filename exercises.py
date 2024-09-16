@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 from math import exp
 
@@ -74,5 +76,21 @@ def train():
     xor_perceptron = train_perceptron(step_function, xor_truth_table(), 10, 0.1)
 
 
+def f(x):
+    return (2 * x * math.cos(x) - x * 2 * math.sin(x) - 1) / 10
+
+
 if __name__ == '__main__':
     train()
+
+    # # 2xcosx - x^2sinx-1/10
+    # # f(x) = x^2 - 4*x
+    # # f(x) = 2x - 4
+    # x = 11
+    # r = .01
+    #
+    # # x = x - r*(2*x-4)
+    #
+    # for _ in range(1000):
+    #     x = x - r * f(x)
+    # print(x)
