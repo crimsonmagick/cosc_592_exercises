@@ -75,22 +75,19 @@ def train():
     and_perceptron = train_perceptron(relu, and_truth_table(), 10, 0.1)
     xor_perceptron = train_perceptron(step_function, xor_truth_table(), 10, 0.1)
 
+    # # f(x) = x^2 - 4*x
+    # # 2xcosx - x^2sinx-1/10
 
-def f(x):
-    return (2 * x * math.cos(x) - x * 2 * math.sin(x) - 1) / 10
+
+# def e(x):
+#     return (2 * x * math.cos(x) - x * 2 * math.sin(x) - 1) / 10
+def df(x):
+    return 2*x - 4
 
 
 if __name__ == '__main__':
-    train()
-
-    # # 2xcosx - x^2sinx-1/10
-    # # f(x) = x^2 - 4*x
-    # # f(x) = 2x - 4
-    # x = 11
-    # r = .01
-    #
-    # # x = x - r*(2*x-4)
-    #
-    # for _ in range(1000):
-    #     x = x - r * f(x)
-    # print(x)
+    x = 11
+    r = .1
+    for epoch in range(100):
+        x = x - r * df(x)
+    print(x)
