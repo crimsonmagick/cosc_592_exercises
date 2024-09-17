@@ -5,35 +5,87 @@
 
 
 
-\title{Progress Report - Week 1}
+\title{Progress Report - Week 1 \\
+\large Novel Methods for Determining Neuron Sensitivity in Large Language Models}
 \author{
-  [Welby Seely] \\
-  \texttt{[wseely@emich.edu]}
+    [Welby Seely] \\
+    \texttt{[wseely@emich.edu]}
 }
 \date{\today}
 
 \begin{document}
 
-\maketitle
+    \maketitle
 
 
 
-\section*{Project Overview}
-Provide a brief summary of your project. Reiterate the goals of your project and any relevant background information.
+    \section*{Project Overview}
+    Large Language Model (LLM) power consumption is increasingly problematic for datacenters, with \textit{The Electric Power
+    Research Institute} forecasting that data centers may see their electricity consumption double by
+    2030~\cite{kindig2024}.
 
-\section*{Current Progress}
-Detail what has been accomplished in the past week. Mention any tasks completed, algorithms or models implemented, data collected, or experiments conducted.
+    Optimizing these models is key to reducing power consumption.
+    The cornerstone of optimization is determining what you need, and what you don't: determine the importance of
+    aspects and components of the system, enabling you to perform systematic optimization with certainty.
+    In Artificial Neural Networks (ANN), the atomic unit of these components is the artificial neuron.
+    To optimize an ANN, understanding the sensitivity of the neuron to changes in its input and parameters is paramount,
+    but the sheer size and complexity of LLMs makes this incredibly challenging.
 
-\section*{Challenges and Issues}
-Describe any difficulties or challenges you faced during the past week. What roadblocks have come up? What have you done to resolve them (or what are you planning to do)?
+    Thus, the goal of this research is to:
+    \begin{enumerate}
+        \item understand current methodologies for determining neuron sensitivity in LLMs
+        \item explore improvements that can be made to more accurately and more efficiently determine neuron sensitivity in
+        LLMs
+    \end{enumerate}
 
-\section*{Next Steps}
-List the tasks or milestones for the upcoming week. Provide a clear plan for what you intend to work on and how you will tackle any ongoing challenges.
+    The intent is that this research will be a first step towards innovating and improving optimizations for LLMs,
+    reducing power consumption and enabling the models to run on lower powered hardware.
 
-\section*{Questions or Feedback Needed}
-If there are any areas where you need guidance, feedback, or clarification from me, include them here.
+    \section*{Current Progress}
+    \subsection*{Literature Review}
+    Initial exploration of the literature regarding neuron sensitivity and component importance has revealed the
+    following techniques:
 
-\bibliographystyle{plainurl}
-\bibliography{bibliography}
+    \begin{itemize}
+        \item Coupled Structure Analysis
+        \subitem Identifies dependency-based structures, in the context of pruning~\cite{ma2023llm}
+        \item Activation Maximization
+        \subitem Optimize an input to maximize the activation of a specific neuron or neuron layer
+        \item Saliency Maps
+        \subitem Visualize Neuron sensitivity by highlighting inputs that most affect a particular neuron or output~\cite{hsu2023explainable}
+        \item Layer-wise Relevance Propagation
+        \subitem Similar to Saliency Maps, decomposes the prediction of a network back to the individual input features~\cite{jia2022interpreting}
+        \item Self-Attention Analysis (LLMs)
+        \subitem Sensitivity is represented by attention weights associated with an attention head, which dictates the degree of influence of each token in a sequence model~\cite{shi2021sparsebert}
+        \item Integrated Gradients
+        \subitem Quantifies feature importance by integrating gradients along the path from a baseline input to the actual input~\cite{sundararajan2017axiomatic}
+        \item SHAP Values (SHapley Additive exPlanation)
+        \subitem Quantifies sensitivity by assigning a contribution score to each input feature based on its impact on the model’s output~\cite{nohara2022explanation}
+        \item Mechanistic Interpretability
+        \subitem Maps out neural circuits in order to determine which parts of a model are responsible for specific capabilities (e.g.\ arithmetic, semantic relationships between words)~\cite{singh2024rethinking}
+    \end{itemize}
+
+    During this initial review, it became apparent that the literature detailing algorithms for determining component
+    ``importance'' in DNNs is general coupled with specific optimization techniques, making understanding the current state
+    of determining neuron sensitivity for LLMs difficult.
+    A sub-goal of this project is to aggregate these techniques in a single document.
+
+    \subsection*{Tool Familiarization}
+    Since writing the proposal, I've begun work on gaining familiarity with TensorFlow\cite{tensorflow_2024} and
+    Pytorch\cite{pytorch_2024} by writing a simple ``or'' gate implementation using both frameworks\cite{seely_tensorflow_2024}
+
+
+
+    \section*{Challenges and Issues}
+    Describe any difficulties or challenges you faced during the past week. What roadblocks have come up? What have you done to resolve them (or what are you planning to do)?
+
+    \section*{Next Steps}
+    List the tasks or milestones for the upcoming week. Provide a clear plan for what you intend to work on and how you will tackle any ongoing challenges.
+
+    \section*{Questions or Feedback Needed}
+    If there are any areas where you need guidance, feedback, or clarification from me, include them here.
+
+    \bibliographystyle{plainurl}
+    \bibliography{bibliography}
 
 \end{document}
