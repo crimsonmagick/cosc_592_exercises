@@ -79,15 +79,15 @@ def train():
     # # 2xcosx - x^2sinx-1/10
 
 
-# def e(x):
-#     return (2 * x * math.cos(x) - x * 2 * math.sin(x) - 1) / 10
-def df(x):
+def e(x):
+    return (2 * x * math.cos(x) - x * 2 * math.sin(x) - 1) / 10
+def e(x):
     return 2*x - 4
 
 
 if __name__ == '__main__':
     x = 11
     r = .1
-    for epoch in range(100):
-        x = x - r * df(x)
+    for _ in range(10):
+        x = x - r * e(x)
     print(x)
