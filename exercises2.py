@@ -36,14 +36,6 @@ if __name__ == '__main__':
     b_output = np.random.uniform(size=(1, output_neurons))
 
     for epoch in range(100000):
-        # print("w_hidden")
-        # print(f"{w_hidden}")
-        # print("b_hidden")
-        # print(f"{b_hidden}")
-        # print("w_output")
-        # print(f"{w_output}")
-        # print("b_output")
-        # print(f"{b_output}")
         inp = (np.dot(xor_input, w_hidden) + b_hidden)
         input_2_hidden_out = sigmoid(inp)
         z = np.dot(input_2_hidden_out, w_output) + b_output
