@@ -8,6 +8,9 @@ class TwoLayerNet:
         self.hidden_neuron_count = hidden_neuron_count
         self.output_neuron_count = output_neuron_count
         self.learning_rate = learning_rate
+        
+        self.input_2_hidden_out = None
+        self.output_1_out = None
 
         self.w_hidden = np.random.uniform(size=(input_neuron_count, hidden_neuron_count))
         self.b_hidden = np.random.uniform(size=(1, hidden_neuron_count))
@@ -20,8 +23,8 @@ class TwoLayerNet:
         return 1 / (1 + np.exp(-x))
 
     @staticmethod
-    def _sigmoid_prime(x) -> float:
-        return x * (1 - x)
+    def _sigmoid_prime(sig_out) -> float:
+        return sig_out * (1 - sig_out)
 
     def __string__(self):
         return (f"w_hidden\n{self.w_hidden}"
@@ -32,12 +35,12 @@ class TwoLayerNet:
     def forward(self, input_neurons):
         inp = (np.dot(input_neurons, self.w_hidden) + self.b_hidden)
         self.input_2_hidden_out = self._sigmoid(inp)
-        z = np.dot(input_2_hidden_out, self.w_output) + self.b_output
-        return self._sigmoid(z)
+        self.output_1_out = np.dot(self.input_2_hidden_out, self.w_output) + self.b_output
+        return self._sigmoid(self.output_1_out)
 
-    def backpropgate(self, input_neurons, labels, actual):
-        error = actual - labels
-        g_out = error * self._sigmoid_prime(actual)
+    def backpropgate(self, input_neurons, labels):
+        error = self.output_1_out - labels
+        g_out = error * self._sigmoid_prime(self.output_1_out)
         self.w_output -= self.learning_rate * np.dot(self.input_2_hidden_out.T, g_out)
         self.b_output -= self.learning_rate * np.sum(g_out, axis=0, keepdims=True)
 
