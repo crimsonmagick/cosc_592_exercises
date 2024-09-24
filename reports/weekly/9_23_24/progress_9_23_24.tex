@@ -5,6 +5,8 @@
 \usepackage[colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue]{hyperref}
 \usepackage{listings}
 \usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{enumitem}
 
 \lstset{
     language=Python,
@@ -23,7 +25,7 @@
     tabsize=4
 }
 
-\title{Progress Report - Week 1 \\
+\title{Progress Report - Week 2 \\
 \large Novel Methods for Determining Neuron Sensitivity in Large Language Models}
 \author{
     [Welby Seely] \\
@@ -58,90 +60,45 @@
     reducing power consumption and enabling the models to run on lower powered hardware.
 
     \section*{Current Progress}
-    \subsection*{Comparative Analysis of Neuron Sensitivity Techniques}
-
+    Analyzed ``Coupled Structure Analysis'' and began analyzing ``Self-Attention Analysis (LLMs)''.
+    \subsection*{Comparative Analysis of Neuron Sensitivity Techniques (In Progress)}
+    \input{comparative-analysis}
+    \subsection*{Neuron Sensitivity Techniques to Be Analyzed}
     \begin{itemize}
-        \item Coupled Structure Analysis
-        \begin{itemize}
-            \item Identifies dependency-based structures, in the context of pruning~\cite{ma2023llm}.
-            \item Advantages
-            \begin{itemize}
-                \item Is pretty great
-            \end{itemize}
-            \item Power consumption
-            \begin{itemize}
-                \item Consumes a lot of power
-            \end{itemize}
-            \item Disadvantages
-        \end{itemize}
+        \item Mechanistic Interpretability
+        \subitem Maps out neural circuits in order to determine which parts of a model are responsible for specific capabilities (e.g.\ arithmetic, semantic relationships between words)~\cite{singh2024rethinking}.
         \item Activation Maximization
-        \subitem Optimize an input to maximize the activation of a specific neuron or neuron layer.
+        \subitem Optimize an input to maximize the activation of a specific neuron or neuron layer~\cite{erhan2009visualizing}.
         \item Saliency Maps
         \subitem Visualize Neuron sensitivity by highlighting inputs that most affect a particular neuron or output~\cite{hsu2023explainable}.
         \item Layer-wise Relevance Propagation
         \subitem Similar to Saliency Maps, decomposes the prediction of a network back to the individual input features~\cite{jia2022interpreting}.
-        \item Self-Attention Analysis (LLMs)
-        \subitem Sensitivity is represented by attention weights associated with an attention head, which dictates the degree of influence of each token in a sequence model~\cite{shi2021sparsebert}.
         \item Integrated Gradients
         \subitem Quantifies feature importance by integrating gradients along the path from a baseline input to the actual input~\cite{sundararajan2017axiomatic}.
         \item SHAP Values (SHapley Additive exPlanation)
         \subitem Quantifies sensitivity by assigning a contribution score to each input feature based on its impact on the model’s output~\cite{nohara2022explanation}.
-        \item Mechanistic Interpretability
-        \subitem Maps out neural circuits in order to determine which parts of a model are responsible for specific capabilities (e.g.\ arithmetic, semantic relationships between words)~\cite{singh2024rethinking}.
     \end{itemize}
 
-    \subsection*{Tool Familiarization}
-    TensorBoard
-
-    Small ANN
-
-    LLM
-
-
     \section*{Challenges and Issues}
-    Even with a simple ``OR'' gate, it becomes evident that hyperparameter selection is incredibly important to make
-    sure the training can converge on the desired predictions.
-    For example, in TensorFlow, when using sigmoid as the activation function, setting ``class weights'' for the single
-    negative ``OR'' case helps the model overall converge faster:
-
-    \begin{lstlisting}[caption=Without class weights]
-        model.fit(inputs, expected_outputs, epochs=100)
-
-        # Input     Expected	Output
-        # [0. 0.]   [0.]        [0.60341406]
-        # [0. 1.]   [1.]        [0.74511236]
-        # [1. 0.]   [1.]        [0.80108136]
-        # [1. 1.]   [1.]        [0.88554966]
-    \end{lstlisting}
-
-    \begin{lstlisting}[caption=With class weights]
-        class_weight = {0: 3, 1: 1}
-        model.fit(inputs, expected_outputs, epochs=100, class_weight=class_weight)
-
-        # Input	    Expected	Output
-        # [0. 0.]	[0.]	    [0.26747793]
-        # [0. 1.]	[1.]	    [0.67236865]
-        # [1. 0.]	[1.]	    [0.7458403]
-        # [1. 1.]	[1.]	    [0.94283354]
-    \end{lstlisting}
-
-    More experience with TensorFlow and PyTorch is needed.
+    My rudimentary understanding of ANN and LLM fundamentals means deeper analysis of articles will take more time as I more fully ramp up on domain knowledge.
 
     \section*{Next Steps}
     \begin{enumerate}
-        \item Build multi-layer ANNs with TensorFlow and PyTorch to gain more experience.
-        \item Experiment with visualizing neuron sensitivity in these networks using TensorBoard\cite{tensorboard_2024}.
-        \item Gain a greater fundamental understanding of ANNs and ANN optimization by studying ``Numerical Computation.''
-        and ``Machine Learning Basics'' in literature such as *Deep Learning by Ian Goodfellow et al.*\cite{Goodfellow-et-al-2016}.
+        \item Continue with comparative analysis of methods.
+        Will try not to get too bogged down on the specifics of each paper in order to get a better view of the bigger picture.
+        \item Expand research on ``Coupled Structure Analysis'' which holds particular promise.
+        \item Begin familiarization with TensorBoard, in particular with LLM models in the HuggingFace Transformers library.
     \end{enumerate}
 
     \section*{Questions or Feedback Needed}
-    I could use feedback on my next steps listed above - am I focusing on the right action items to properly build my
-    understanding of neuron sensitivity?
+    Based on your feedback, I'll be completing an initial comparative analysis of sensitivity/importance methods in the next week or two.
+    I think I need to then narrow the scope of the research in order to have a ``minimum viable product'' by the end of the semester.
+    Do you have any advice on how to best spend my time?
+    I suspect I'm getting too bogged down on specific papers as I read them.
 
     \bibliographystyle{plainurl}
     \bibliography{bibliography}
-    \thanks Thanks to ChatGPT~\cite{chatgpt_2024} for helping with my initial forays into PyTorch and TensorFlow, generating
-    occasionally correct BibTeX citations for websites, and helping me with LaTeX syntax.
+    \thanks Thanks to ChatGPT~\cite{chatgpt_2024} for helping me understand papers as I parse through them and generating
+    BibTeX citations for websites.
 
 \end{document}

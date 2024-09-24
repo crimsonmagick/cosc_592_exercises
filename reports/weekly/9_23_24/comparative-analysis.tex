@@ -1,0 +1,64 @@
+
+\begin{itemize}
+    \item Coupled Structure Analysis
+    \begin{itemize}
+        \item Identifies dependency-based structures, in the context of pruning~\cite{ma2023llm}.
+        \item Axiom: a neuron $N_j$ is co-dependent on another neuron $N_i$ if and only if it only receives input from $N_j$ and $N_i$ only outputs to $N_j$.
+         More formally:
+        \begin{equation}
+             N_j \in \operatorname{Out}(N_i) \wedge \operatorname{Deg}^-(N_j) = 1 \Rightarrow N_j \text{ is dependent on } N_i\label{eq:equation}
+        \end{equation}
+        \begin{equation}
+             N_i \in \operatorname{In}(N_j) \wedge \operatorname{Deg}^+(N_i) = 1 \Rightarrow N_i \text{ is dependent on } N_j\label{eq:equation2}
+        \end{equation}
+        \item Identifying groups (building a dependency graph):
+        \begin{enumerate}
+            \item Select an arbitrary neuron as an initial ``trigger.''
+            \item Using the axiom, identify if there is a dependency relationship with another neuron, either forwards or backwards.
+            \item Newly identified neurons trigger additional ``dependent'' neurons, if eligible by the axiom.
+            \item Continue this process iteratively until no new dependent neurons are found.
+        \end{enumerate}
+        \item Estimating the importance of a group:
+        \begin{enumerate}
+            \item Identify a small, publicly available dataset (different from the training data).
+            \item Measure the importance of a group by using Vector-Wise and Element Importance in aggregate:
+            \begin{enumerate}
+                \item Vector-Wise Importance: relate weight matrices to the loss function.
+                This is useful because using this non-training data means ${\partial \mathcal{L}}/{\partial W_i} \not \approx 0$.
+                \item Element Wise Importance: relate individual parameters to the loss function.
+                \item Finally, these two importance scores must be aggregated through a summation, a maximum, a product, or the last parameter in the group.
+            \end{enumerate}
+        \end{enumerate}
+        \item Advantages:
+        \begin{itemize}
+            \item The simplistic nature of the axiom makes it easy to identify groups eligible for simple pruning.
+            \item Element-wise importance calculation is simplified through the use of approximate gradients and Hessians.
+            \item The small dataset keeps the calculations to a relative minimum.
+        \end{itemize}
+        \item These advantages would result in reduced power consumption, but the paper unfortunately does not delve into these details.
+        More research into pruning methods is necessary.
+        \item Weaknesses:
+        \begin{itemize}
+            \item The grouping algorithm cannot classify all neurons into groups - ``dependence'' is relegated to a very simplistic definition that prevents us from looking at the entire model from a holistic point of view.
+            \item The paper reports a rapid collapse in model accuracy and coherence at $~20\%$ pruning of neurons.
+             I suspect that this is a limitation of the axiom, the naive definition of ``dependence'':
+             the actual importance of groups of neurons cannot truly be understood when removing the more complex neural relationships from the analysis.
+             This is a possible narrowing of focus this research could take.
+            \item The grouping algorithm is not foolproof, and fails for certain models and ``operations''\cite{LLM-Pruner}.
+        \end{itemize}
+    \end{itemize}
+    \item Self-Attention Analysis (LLMs)
+    \begin{itemize}
+        \item Sensitivity is represented by attention weights associated with an attention head, which dictates the degree of influence of each token in a sequence model~\cite{shi2021sparsebert}.
+        \item Hypothesis: not all positions in the self-attention matrix in a Transformer model are equally important.
+        \item Differentiable ArchiTecture Search (DARTS)
+        \item Process:
+        \begin{enumerate}
+            \item Introduce a set of learnable parameters $a_{i,j}$ for each attention position $(i, j)$.
+            Each of these parameters is the probability representing the importance of token $i$ to token $j$.
+            \item Perform element-wise multiplication with the original attention matrix.
+            \item Optimize both the model parameters and attention importance parameters simultaneously during training using gradient descent.
+            \item TODO explain specifically how this helps the model and the designer understand degrees of influence of each token.
+        \end{enumerate}
+    \end{itemize}
+\end{itemize}
