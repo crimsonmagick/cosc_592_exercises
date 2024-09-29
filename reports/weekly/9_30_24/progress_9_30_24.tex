@@ -1,0 +1,105 @@
+\documentclass{article}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{graphicx}
+\usepackage[colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue]{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{enumitem}
+
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\footnotesize\selectfont, % use the selected monospaced font
+    backgroundcolor=\color{white},
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=10pt,
+    frame=single,
+    breaklines=true,
+    captionpos=b,
+    tabsize=4
+}
+
+\title{Progress Report - Week 3 \\
+\large Novel Methods for Determining Neuron Sensitivity in Large Language Models}
+\author{
+    [Welby Seely] \\
+    \texttt{[wseely@emich.edu]}
+}
+\date{\today}
+
+\begin{document}
+
+    \maketitle
+
+    \section{Project Overview}\label{sec:project-overview}
+    Large Language Model (LLM) power consumption is increasingly problematic for datacenters, with \textit{The Electric Power
+    Research Institute} forecasting that data centers may see their electricity consumption double by
+    2030~\cite{kindig2024}.
+
+    Optimizing these models is key to reducing power consumption.
+    The cornerstone of optimization is determining what you need, and what you don't: determine the importance of
+    aspects and components of the system, enabling you to perform systematic optimization with certainty.
+    In Artificial Neural Networks (ANN), the atomic unit of these components is the artificial neuron.
+    To optimize an ANN, understanding the sensitivity of the neuron to changes in its input and parameters is paramount,
+    but the sheer size and complexity of LLMs makes this incredibly challenging.
+
+    Thus, the goal of this research is to:
+    \begin{enumerate}
+        \item Understand current methodologies for determining neuron sensitivity in LLMs.
+        \item Explore improvements that can be made to more accurately and more efficiently determine neuron sensitivity in
+        LLMs.
+    \end{enumerate}
+
+    The intent is that this research will be a first step towards innovating and improving optimizations for LLMs,
+    reducing power consumption and enabling the models to run on lower powered hardware.
+
+    \section{Current Progress}\label{sec:current-progress}
+    \subsection{Comparative Analysis of Neuron Sensitivity Techniques}\label{subsec:comparative-analysis-of-neuron-sensitivity-techniques}
+    \input{structure-analysis}
+    \input{token-importance}
+    \subsection{Neuron Sensitivity Techniques to Be Analyzed}\label{subsec:neuron-sensitivity-techniques-to-be-analyzed}
+    \begin{itemize}
+        \item Mechanistic Interpretability
+        \subitem Maps out neural circuits in order to determine which parts of a model are responsible for specific capabilities (e.g.\ arithmetic, semantic relationships between words)~\cite{singh2024rethinking}.
+        \item Activation Maximization
+        \subitem Optimize an input to maximize the activation of a specific neuron or neuron layer~\cite{erhan2009visualizing}.
+        \item Saliency Maps
+        \subitem Visualize Neuron sensitivity by highlighting inputs that most affect a particular neuron or output~\cite{hsu2023explainable}.
+        \item Layer-wise Relevance Propagation
+        \subitem Similar to Saliency Maps, decomposes the prediction of a network back to the individual input features~\cite{jia2022interpreting}.
+        \item Integrated Gradients
+        \subitem Quantifies feature importance by integrating gradients along the path from a baseline input to the actual input~\cite{sundararajan2017axiomatic}.
+        \item SHAP Values (SHapley Additive exPlanation)
+        \subitem Quantifies sensitivity by assigning a contribution score to each input feature based on its impact on the model’s output~\cite{nohara2022explanation}.
+    \end{itemize}
+
+    \section{Challenges and Issues}\label{sec:challenges-and-issues}
+    Everything is perfect, no worries here.
+    I have truly mastered all things Machine Learning and am now ready to trascend nature and become one with artificial intelligence.
+
+    \section{Next Steps}\label{sec:next-steps}
+    \begin{enumerate}
+        \item Continue with comparative analysis of methods.
+        Will try not to get too bogged down on the specifics of each paper in order to get a better view of the bigger picture.
+        \item Expand research on ``Coupled Structure Analysis'' which holds particular promise.
+        \item Begin familiarization with TensorBoard, in particular with LLM models in the HuggingFace Transformers library.
+    \end{enumerate}
+
+    \section{Questions or Feedback Needed}\label{sec:questions-or-feedback-needed}
+    Based on your feedback, I'll be completing an initial comparative analysis of sensitivity/importance methods in the next week or two.
+    I think I need to then narrow the scope of the research in order to have a ``minimum viable product'' by the end of the semester.
+    Do you have any advice on how to best spend my time?
+    I suspect I'm getting too bogged down on specific papers as I read them.
+
+    \bibliographystyle{plainurl}
+    \bibliography{bibliography}
+    \thanks Thanks to ChatGPT~\cite{chatgpt_2024} for helping me understand papers as I parse through them and generating
+    BibTeX citations for websites.
+
+\end{document}
