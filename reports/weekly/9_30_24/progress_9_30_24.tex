@@ -115,7 +115,7 @@
     \section{Challenges and Issues}\label{sec:challenges-and-issues}
     Even with a 4090 with 24 GB of VRAM, research code is exhausting memory.
     Optimizations are required, and figuring out a way to run backpropagation on Llama 3--8B on GPU without running out of memory is challenging.
-    I'm currently exploring $torch.utils.checkpoint$ as a workaround, trading computation cost for memory cost.
+    I'm currently exploring $torch.utils.checkpoint$ as a workaround, trading memory cost for computation cost.
 
 
     \section{Next Steps}\label{sec:next-steps}
