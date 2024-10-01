@@ -2,7 +2,7 @@
 % Start actually implementing (or even better try to find open-source implementations) models
 % How do these works evaluate their energy savings (if they do)? Do they evaluate actual hardware/simulated hardware?
 
-\subsection{Structure Importance Analysis}\label{subsec:strucure-importance-analysis}
+\subsubsection{Structure Importance Analysis}\label{subsubsec:strucure-importance-analysis}
 
 This is an analysis of optimization techniques that rely on understanding on the importance of larger structures with the LLM\@.
 \begin{itemize}
@@ -10,12 +10,12 @@ This is an analysis of optimization techniques that rely on understanding on the
     \begin{itemize}
         \item Identifies dependency-based structures, in the context of pruning
         \item Axiom: a neuron $N_j$ is co-dependent on another neuron $N_i$ if and only if it only receives input from $N_j$ and $N_i$ only outputs to $N_j$.
-         More formally:
+        More formally:
         \begin{equation}
-             N_j \in \operatorname{Out}(N_i) \wedge \operatorname{Deg}^-(N_j) = 1 \Rightarrow N_j \text{ is dependent on } N_i\label{eq:equation}
+            N_j \in \operatorname{Out}(N_i) \wedge \operatorname{Deg}^-(N_j) = 1 \Rightarrow N_j \text{ is dependent on } N_i\label{eq:equation}
         \end{equation}
         \begin{equation}
-             N_i \in \operatorname{In}(N_j) \wedge \operatorname{Deg}^+(N_i) = 1 \Rightarrow N_i \text{ is dependent on } N_j\label{eq:equation2}
+            N_i \in \operatorname{In}(N_j) \wedge \operatorname{Deg}^+(N_i) = 1 \Rightarrow N_i \text{ is dependent on } N_j\label{eq:equation2}
         \end{equation}
         \item Identifying groups (building a dependency graph):
         \begin{enumerate}
@@ -47,12 +47,36 @@ This is an analysis of optimization techniques that rely on understanding on the
         \begin{itemize}
             \item The grouping algorithm cannot classify all neurons into groups - ``dependence'' is relegated to a very simplistic definition that prevents us from looking at the entire model from a holistic point of view.
             \item The paper reports a rapid collapse in model accuracy and coherence at $~20\%$ pruning of neurons.
-             I suspect that this is a limitation of the axiom, the naive definition of ``dependence'':
-             the actual importance of groups of neurons cannot truly be understood when removing the more complex neural relationships from the analysis.
-             This is a possible narrowing of focus this research could take.
+            I suspect that this is a limitation of the axiom, the naive definition of ``dependence'':
+            the actual importance of groups of neurons cannot truly be understood when removing the more complex neural relationships from the analysis.
+            This is a possible narrowing of focus this research could take.
             \item The grouping algorithm is not foolproof, and fails for certain models and ``operations''\cite{LLM-Pruner}.
         \end{itemize}
+        \item Energy usage and savings
+        \begin{itemize}
+            \item Energy savings not directly evaluated by the authors.
+            Tests likely carried out using enterprise grade GPUs.
+        \end{itemize}
     \end{itemize}
-    \item Mechanistic Interpretability
-    \subitem Maps out neural circuits in order to determine which parts of a model are responsible for specific capabilities (e.g.\ arithmetic, semantic relationships between words)~\cite{singh2024rethinking}.
+    \item LLM Pruning and Distillation in Practice: The Minitron Approach~\cite{sreenivas2024llm}
+    \begin{itemize}
+        \item Uses activation-based importance estimation strategy that computes sensitivity information for all
+        the axes under consideration (depth, neuron, head, and embedding channel).
+        \item Energy usage and savings
+        \begin{itemize}
+            \item Energy savings not evaluated by the authors.
+            \item Measuring on local hardware: energy consumption when compared to baseline Llama 3 model are
+            approximately 23\% per token (3.17 vs 4.12 J).
+        \end{itemize}
+    \end{itemize}
+    \item Rethinking Interpretability in the Era of Large Language Models ~\cite{singh2024rethinking}
+    \begin{itemize}
+        \item Paper is something of a meta-analysis of mechanistic interpretability.
+        The fundamental idea is to map out neural circuits in order to determine which parts of a model are responsible for specific capabilities (e.g.\ arithmetic, semantic relationships between words).
+        Over 150 papers cited in this meta-analysis.
+        \item Energy usage and savings
+        \begin{itemize}
+            \item Energy savings not evaluated by the authors.
+        \end{itemize}
+    \end{itemize}
 \end{itemize}
