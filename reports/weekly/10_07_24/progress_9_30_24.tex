@@ -1,0 +1,131 @@
+\documentclass{article}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{graphicx}
+\usepackage[colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue]{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{enumitem}
+
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\footnotesize\selectfont, % use the selected monospaced font
+    backgroundcolor=\color{white},
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=10pt,
+    frame=single,
+    breaklines=true,
+    captionpos=b,
+    tabsize=4
+}
+
+\title{Progress Report - Week 3 \\
+\large Novel Methods for Determining Neuron Sensitivity in Large Language Models}
+\author{
+    [Welby Seely] \\
+    \texttt{[wseely@emich.edu]}
+}
+\date{\today}
+
+\begin{document}
+
+    \maketitle
+
+
+    \section{Project Overview}\label{sec:project-overview}
+    Large Language Model (LLM) power consumption is increasingly problematic for datacenters, with \textit{The Electric Power
+    Research Institute} forecasting that data centers may see their electricity consumption double by
+    2030~\cite{kindig2024}.
+
+    Optimizing these models is key to reducing power consumption.
+    The cornerstone of optimization is determining what you need, and what you don't: determine the importance of
+    aspects and components of the system, enabling you to perform systematic optimization with certainty.
+    In Artificial Neural Networks (ANN), the atomic unit of these components is the artificial neuron.
+    To optimize an ANN, understanding the sensitivity of the neuron to changes in its input and parameters is paramount,
+    but the sheer size and complexity of LLMs makes this incredibly challenging.
+
+    Thus, the goal of this research is to:
+    \begin{enumerate}
+        \item Understand current methodologies for determining neuron sensitivity in LLMs.
+        \item Explore improvements that can be made to more accurately and more efficiently determine neuron sensitivity in
+        LLMs.
+    \end{enumerate}
+
+    The intent is that this research will be a first step towards innovating and improving optimizations for LLMs,
+    reducing power consumption and enabling the models to run on lower powered hardware.
+
+
+    \section{Current Progress}\label{sec:current-progress}
+
+    \subsection{Pruning with LLM--Pruner}\label{subsec:pruning-with-llm--pruner}
+    Forked the LLM--Pruner codebase to work on my local machine.
+    Optimized perplexity calculation to avoid keeping unnecessary tensor information in VRAM. Was able to get evaluation with GPU and pruning with CPU nominally working, but incorrect metadata of the model is preventing the model from being loaded by external scripts.
+    GPU pruning is failing due to out of memory errors - currently working on using $torch.utils.checkpoint$ as a workaround.
+    Small changes made so far to the codebase can be found on GitHub ~\cite{llm-pruner-pr}.
+
+    \subsection{Measuring Power Consumption Programmatically}\label{subsec:measuring-power-consumption-locally}
+    I've developed a simple test runner for measuring the energy usage of an LLM, using the test dataset of ``wikitext-2-v1'' from HuggingFace~\cite{merity2016pointersentinelmixturemodels}.
+    The code can be found on GitHub~\cite{llm-test-runner}.
+    Energy consumption is measured using the pynvml library, which is supported on Volta or newer Nvidia GPUs. This will facilitate measuring energy savings on approximated models even when the associated papers do not measure energy savings.
+
+    As an initial proof of concept, only the first 20 rows of the dataset were used.
+
+    \begin{itemize}
+        \item Baseline: Llama 3--8B
+        \begin{itemize}
+            \item Total Execution Time: 87.98 s
+            \item Total Energy Usage: 23716 J
+            \item Average Time Per Token: 15.31 ms
+            \item Average Energy Per Token: 4.12 J
+        \end{itemize}
+        \item Pruned: Llama--3--Minitron--4B--Width-Base
+        \begin{itemize}
+            \item Total Execution Time: 146.28 s
+            \item Total Energy Usage: 3055.35 J
+            \item Average Time Per Token: 15.22 ms
+            \item Average Energy Per Token: 3.17 J
+        \end{itemize}
+        \item Baseline: Llama 2--7B (Decapoda Research)~\cite{decapoda-llama-7B}
+        \begin{itemize}
+            \item Total Execution Time: 152.31 s
+            \item Total Energy Usage: 40887.47 J
+            \item Average Time Per Token: 15.23 ms
+            \item Average Energy Per Token: 4.89 J
+        \end{itemize}
+        \item Pruned with LLM--Pruner~\cite{ma2023llm}: Llama 2--7B (Decapoda Research)
+        \item TODO - working on getting pruned model to load correctly
+    \end{itemize}
+
+    \subsection{Comparative Analysis of Neuron Sensitivity Techniques}\label{subsec:comparative-analysis-of-neuron-sensitivity-techniques}
+
+    As a part of literature review, I've grouped different works into particular categories of importance determination.
+    I've also added Nvidia's Minitron~\cite{sreenivas2024llm} to the ``Structure Importance Analysis'' section.
+
+    \input{structure-analysis}
+    \input{input-sensitivity}
+    \input{token-importance}
+
+
+    \section{Challenges and Issues}\label{sec:challenges-and-issues}
+    Even with a 4090 with 24 GB of VRAM, research code is exhausting memory.
+    Optimizations are required, and figuring out a way to run backpropagation on Llama 3--8B on GPU without running out of memory is challenging.
+    I'm currently exploring $torch.utils.checkpoint$ as a workaround, trading memory cost for computation cost.
+
+
+    \section{Next Steps}\label{sec:next-steps}
+    Will continue working on evaluating LLM models and optimization techniques, evaluating power usage and importance determination techniques.
+    Structured analysis of importance is of particular interest.
+
+    \section{Questions or Feedback Needed}\label{sec:questions-or-feedback-needed}
+    Based on your feedback, I've begun looking into energy savings and digging into running the models and approximation code.
+    \bibliographystyle{plainurl}
+    \bibliography{bibliography}
+    \thanks Thanks to ChatGPT~\cite{chatgpt_2024} for help with PyTorch and for helping generate BibTeX citations for websites.
+
+\end{document}
