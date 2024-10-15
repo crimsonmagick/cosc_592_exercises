@@ -1,0 +1,24 @@
+% Feedback:
+% Start actually implementing (or even better try to find open-source implementations) models
+% How do these works evaluate their energy savings (if they do)? Do they evaluate actual hardware/simulated hardware?
+
+\subsubsection{Self-Attention Analysis (LLMs)}\label{subsubsec:token-importance-analysis}
+
+This is an analysis of optimization techniques that are more specific to LLMs, relying on understanding the importance of tokens during the evaluation of a LLM\@.
+
+\begin{itemize}
+    \item Rethinking the importance analysis in self-attention (2021)l~\cite{shi2021sparsebert}.
+    \begin{itemize}
+        \item Sensitivity is represented by attention weights associated with an attention head, which dictates the degree of influence of each token in a sequence mode.
+        \item Hypothesis: not all positions in the self-attention matrix in a Transformer model are equally important.
+        \item Differentiable ArchiTecture Search (DARTS)
+        \item Process:
+        \begin{enumerate}
+            \item Introduce a set of learnable parameters $a_{i,j}$ for each attention position $(i, j)$.
+            Each of these parameters is the probability representing the importance of token $i$ to token $j$.
+            \item Perform element-wise multiplication with the original attention matrix.
+            \item Optimize both the model parameters and attention importance parameters simultaneously during training using gradient descent.
+            \item TODO explain specifically how this helps the model and the designer understand degrees of influence of each token.
+        \end{enumerate}
+    \end{itemize}
+\end{itemize}
