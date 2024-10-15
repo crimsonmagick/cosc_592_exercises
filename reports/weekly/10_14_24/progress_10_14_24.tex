@@ -146,19 +146,21 @@
         \end{itemize}
         \item Baseline: Llama 2--7B (Decapoda Research)~\cite{decapoda-llama-7B}
         \begin{itemize}
+            \item Total Execution Time: 90.45 s
+            \item Total Energy Usage: 24507.63 J
+            \item Average Time Per Token: 10.27 ms
+            \item Average Energy Per Token: 2.78 J
+            \item Vocab Size: 32000
+            \item Perplexity: 2.37
+        \end{itemize}
+        \item Pruned with LLM--Pruner~\cite{ma2023llm}: Llama 2--7B (Decapoda Research) #NOTE - I need to re-run and check my data here, because this doesn't seem right when compared with the base model
+        \begin{itemize}
             \item Total Execution Time: 152.09 s
             \item Total Energy Usage: 34084.31 J
             \item Average Time Per Token: 13.01 ms
             \item Average Energy Per Token: 2.92 J
-            \item Perplexity: 2.99
             \item Vocab Size: 32000
-        \end{itemize}
-        \item Pruned with LLM--Pruner~\cite{ma2023llm}: Llama 2--7B (Decapoda Research)
-        \begin{itemize}
-            \item Total Execution Time: 143.12 s
-            \item Total Energy Usage: 30289.60 j
-            \item Average Time Per Token: 17.75 ms
-            \item Average Energy Per Token: 3.76 j
+            \item Perplexity: 2.99
         \end{itemize}
     \end{itemize}
 
