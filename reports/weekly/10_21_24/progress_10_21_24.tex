@@ -1,0 +1,265 @@
+\documentclass{article}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{graphicx}
+\usepackage[colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue]{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{enumitem}
+
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\footnotesize\selectfont, % use the selected monospaced font
+    backgroundcolor=\color{white},
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=10pt,
+    frame=single,
+    breaklines=true,
+    captionpos=b,
+    tabsize=4
+}
+
+\title{Progress Report - Week 6 \\
+\large LLM Neuron Ablation - Determining the Impact of Structured Pruning to Large Language Model Accuracy and Energy Consumption}
+\author{
+    [Welby Seely] \\
+    \texttt{[wseely@emich.edu]}
+}
+\date{\today}
+
+\begin{document}
+
+    \maketitle
+
+
+    \section{Project Overview}\label{sec:project-overview}
+    Large Language Model (LLM) power consumption is increasingly problematic for datacenters, with \textit{The Electric Power
+    Research Institute} forecasting that data centers may see their electricity consumption double by
+    2030~\cite{kindig2024}.
+
+    Optimizing these models is key to reducing power consumption.
+    The cornerstone of optimization is determining what you need, and what you don't: determine the importance of
+    aspects and components of the system, enabling you to perform systematic optimization with certainty.
+    In Artificial Neural Networks (ANN), the atomic unit of these components is the artificial neuron.
+    To optimize an ANN, understanding the sensitivity of the neuron to changes in its input and parameters is paramount,
+    but the sheer size and complexity of LLMs makes this incredibly challenging.
+
+    Sensitivity to pruning, the removal of neurons (weight matrix rows) is the initial phase of researching this sensitivity.
+    The object of this research is to explore the impacts of removing neurons from specific components of Large Language Models, in particular decoder-only models (such as the Llama family).
+
+
+    \section{Current Progress}\label{sec:current-progress}
+    I've narrowed my focus to pruning Large Language Models, specifically to removing neurons from components in the Transformer Blocks in the models.
+    To this end, I've begun analyzing the Transformer architecture and the LLM Pruner~\cite{LLM-Pruner} in greater depth.
+
+    \subsection{Decoder-Only Transformer Architecture}\label{subsec:test-harness-correction}
+
+    The architecture of a Decoder-Only Transformer is as follows~\cite{chalvatzaki2023learningreasonscenegraphs}:
+
+    \begin{enumerate}
+        \item Input Embeddings
+        \begin{itemize}
+            \item Input tokens are transformed into embeddings, a vector that encodes semantics.
+            \item This layer can potentially be pruned.
+        \end{itemize}
+        \item Positional Encoding
+        \begin{itemize}
+            \item Unlike RNNs, Transformers do not contain cycles.
+            While this helps with parallelism, that means that sequence order must be explicitly encoded.
+            This is done by adding the positions to the embeddings vector.
+            \item If the Input Embedding layer is pruned, this layer must be pruned to keep the same dimensionality as the embeddings vector.
+        \end{itemize}
+        \item Transformer Blocks
+        \begin{itemize}
+            \item This is the core computational unit of the architecture.
+            Its main function is to learn contextual information about the input, providing an understanding of how each token relates to the other tokens in the sequence.
+            \item This block is of particular interest for pruning.
+            More on that in a bit.
+        \end{itemize}
+        \item Normalization Layer
+        \begin{itemize}
+            \item Normalizes and scales the output vector of the transformer block stack~\cite{ba2016layernormalization}.
+            Uses two learnable parameters, $\gamma$ and $\beta$: $output_{\text{scaled}} = \gamma \times output_{\text{normalized}} + \beta$.
+            \item If the size of the output vector from the transformer block stack changes, this layer will also need to be pruned.
+        \end{itemize}
+        \item Linear Layer
+        \begin{itemize}
+            \item Transforms the normalized output from the transformer block stack into a logits vector the size of the model's vocabulary.
+            This layer contains learnable parameters.
+            \item Just like the Normalization Layer, if the size of the output vector from the transformer block stack changes, this layer will also need to be pruned.
+        \end{itemize}
+        \item Softmax Layer
+        \begin{itemize}
+            \item Normalizes the logit probabilities so that they add up to 1.
+            \item This stage does not have learnable parameters, so there is no parameter pruning to be done.
+        \end{itemize}
+    \end{enumerate}
+
+    As previously mentioned, the Transformer Block is the core computational unit.
+    Its architecture:~\cite{chalvatzaki2023learningreasonscenegraphs}:
+    \begin{enumerate}
+        \item Multihead Attention
+        \begin{itemize}
+            \item The primary innovation of the Transformers Architecture, it is a mechanism that allows for the model to focus on different parts of the sequence simultaneously by computing attention scores in multiple parallel layers.
+            The input is the embeddings vector, and the output is a weighted sum of those embeddings
+            \item This stage is heavily parameterized.
+            Individual neurons can be pruned, or entire heads ablated.
+            There's also a potential knock-on effect if the embeddings layer is pruned - input dimensions (columns in the weight matrices) must be pruned accordingly.
+        \end{itemize}
+        \item Linear Layer
+        \begin{itemize}
+            \item This is a fully connected layer that prepares the multi-head output for normalization before being processed by the Feed-Forward Network.
+            \item Parameterized and can be pruned.
+        \end{itemize}
+        \item Normalization With Residual Connection
+        \begin{itemize}
+            \item A residual (skip) connection is applied, short-circuiting the embeddings originally provided to the multi-head layer.
+            The intention is to prevent degradation of information after multi-head processing.
+            The result of this skip connection is normalized using the aforementioned methodology.
+            \item Parameterized and can be pruned.
+        \end{itemize}
+        \item Feed-Forward Network (FFN)
+        \begin{itemize}
+            \item Provides two layers of linear transformations with an activation function in between, serving as the source of non-linearity in the Transformer Block.
+            \item Heavily parameterized, can be pruned.
+        \end{itemize}
+        \item Normalization with Residual Connection
+        \begin{itemize}
+            \item The same Layer Normalization with a skip connection is applied to the output of the FFN.
+            \item Parameterized and can be pruned.
+        \end{itemize}
+    \end{enumerate}
+
+    This overview of the Decoder architecture provides a number of discrete components to target for pruning.
+    I will begin first with targeting the Transformer block, specifically the Multi Head and FFN layers.
+
+    \subsection{The Core of LLM Pruner}\label{subsec:core-of-llm-pruner}
+
+    The core of LLM Pruner is contained in three files in particular:
+
+    \begin{enumerate}
+        \item metapruner.py
+        \begin{itemize}
+            \item MetaPruner is the orchestrator for pruning, supporting both local and global pruning strategies.
+            \item Global pruning a component across all transformer blocks, keeping the parameter and vector dimensions the same across the model.
+            \begin{itemize}
+                \item This is useful for both the sake of efficiency while traversing the dependency graph, and for keeping the model dimensions simple.
+            \end{itemize}
+            \item Local pruning has the granularity of per-layer.
+            \begin{itemize}
+                \item This allows you to make pinpoint changes to particular parts of the model, but may have additional computational costs and causes the model configuration to no longer be compatible with most HuggingFace Transformer configs.
+                \item Llama, for example, only supports Transformer Block configurations that are uniform across the entire model.
+                \item You can get around this by creating a custom subclass and configuration for the pruned model, but this has not been fully implemented by the authors.
+            \end{itemize}
+            \item The class builds a dependency graph of the model and prunes based on ``channel sparsity'' (as described bellow in the original analysis of the LLM Pruner paper).
+        \end{itemize}
+        \item dependency.py
+        \begin{itemize}
+            \item Defines a dependency graph to manage the relationships between layers during pruning.
+            \item Manages the actual pruning by delegating to specific pruning functions.
+        \end{itemize}
+        \item function.py
+        \begin{itemize}
+            \item This incredibly specifically-named file is probably the most important in the entire project.
+            It contains the classes that actually prune specific components.
+            \item Examples: MultiheadAttentionPruner, EmbeddingPruner,LinearPruner
+            \item Interestingly, includes other pruners not necessarily relevant to transformers: ConvPruner, LSTMPruner
+        \end{itemize}
+    \end{enumerate}
+
+    Analysis of the project will deepen as I start using it to prune decoder components in Llama models.
+
+    \subsection{How Does the LLM Pruner, Well, Prune?}\label{subsec:how-prune}
+
+    function.py performs the pruning of the tensor, returning the pruned tensor as output, which is ultimately set by dependency.py.
+    For example:
+
+    \begin{lstlisting}[language=Python,label={lst:lstlisting}]
+        # function.py
+        pruned_parameter = nn.Parameter(torch.index_select(
+        tensor.data, self.pruning_dim, torch.LongTensor(keep_idxs).to(tensor.device)))
+
+        # dependency.py
+        setattr(module, path[-1], pruned_parameter)
+    \end{lstlisting}
+
+    My fundamental understanding of this tensor juggling will expand over the coming week.
+
+    \subsection{Original Analysis of the LLM Pruner Paper}\label{subsec:original-analysis-of-the-llm-pruner-paper}
+    Llm-pruner: On the structural pruning of large language models~\cite{ma2023llm}.
+    \begin{itemize}
+        \item Identifies dependency-based structures, in the context of pruning
+        \item Axiom: a neuron $N_j$ is co-dependent on another neuron $N_i$ if and only if it only receives input from $N_j$ and $N_i$ only outputs to $N_j$.
+        More formally:
+        \begin{equation}
+            N_j \in \operatorname{Out}(N_i) \wedge \operatorname{Deg}^-(N_j) = 1 \Rightarrow N_j \text{ is dependent on } N_i\label{eq:equation}
+        \end{equation}
+        \begin{equation}
+            N_i \in \operatorname{In}(N_j) \wedge \operatorname{Deg}^+(N_i) = 1 \Rightarrow N_i \text{ is dependent on } N_j\label{eq:equation2}
+        \end{equation}
+        \item Identifying groups (building a dependency graph):
+        \begin{enumerate}
+            \item Select an arbitrary neuron as an initial ``trigger.''
+            \item Using the axiom, identify if there is a dependency relationship with another neuron, either forwards or backwards.
+            \item Newly identified neurons trigger additional ``dependent'' neurons, if eligible by the axiom.
+            \item Continue this process iteratively until no new dependent neurons are found.
+        \end{enumerate}
+        \item Estimating the importance of a group:
+        \begin{enumerate}
+            \item Identify a small, publicly available dataset (different from the training data).
+            \item Measure the importance of a group by using Vector-Wise and Element Importance in aggregate:
+            \begin{enumerate}
+                \item Vector-Wise Importance: relate weight matrices to the loss function.
+                This is useful because using this non-training data means ${\partial \mathcal{L}}/{\partial W_i} \not \approx 0$.
+                \item Element Wise Importance: relate individual parameters to the loss function.
+                \item Finally, these two importance scores must be aggregated through a summation, a maximum, a product, or the last parameter in the group.
+            \end{enumerate}
+        \end{enumerate}
+        \item Advantages:
+        \begin{itemize}
+            \item The simplistic nature of the axiom makes it easy to identify groups eligible for simple pruning.
+            \item Element-wise importance calculation is simplified through the use of approximate gradients and Hessians.
+            \item The small dataset keeps the calculations to a relative minimum.
+        \end{itemize}
+        \item These advantages would result in reduced power consumption, but the paper unfortunately does not delve into these details.
+        More research into pruning methods is necessary.
+        \item Weaknesses:
+        \begin{itemize}
+            \item The grouping algorithm cannot classify all neurons into groups - ``dependence'' is relegated to a very simplistic definition that prevents us from looking at the entire model from a holistic point of view.
+            \item The paper reports a rapid collapse in model accuracy and coherence at $~20\%$ pruning of neurons.
+            I suspect that this is a limitation of the axiom, the naive definition of ``dependence'':
+            the actual importance of groups of neurons cannot truly be understood when removing the more complex neural relationships from the analysis.
+            This is a possible narrowing of focus this research could take.
+            \item The grouping algorithm is not foolproof, and fails for certain models and ``operations''\cite{LLM-Pruner}.
+        \end{itemize}
+        \item Energy usage and savings
+        \begin{itemize}
+            \item Energy savings not directly evaluated by the authors.
+            Tests likely carried out using enterprise grade GPUs.
+        \end{itemize}
+    \end{itemize}
+
+
+    \section{Challenges and Issues}\label{sec:challenges-and-issues}
+    Deeper analysis is necessary now that I'm pursuing pruning experimentation instead of a more generic meta-analysis.
+    This isn't a challenge per se, but it is more *challenging* (albeit more interesting).
+
+    \section{Next Steps}\label{sec:next-steps}
+    Using functions.py as a base, I'm going to prune the Multi Head and FFN layers in the Transformer Blocks of Llama 3 8b and measure impacts to perplexity, execution time, and energy consumption.
+
+    Will also work on finding additional research papers and open source projects for reference.
+
+    \section{Questions or Feedback Needed}\label{sec:questions-or-feedback-needed}
+    Based on our conversation last week, I've narrowed the current scope of this research to measuring the effects when pruning/ablating specific portions of LLMs.
+
+    \bibliographystyle{plainurl}
+    \bibliography{bibliography}
+    \thanks Thanks to ChatGPT~\cite{chatgpt_2024} for help with PyTorch and for helping generate BibTeX citations for websites.
+
+\end{document}
