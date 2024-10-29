@@ -1,0 +1,194 @@
+\documentclass{article}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{graphicx}
+\usepackage[colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue]{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{enumitem}
+
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\footnotesize\selectfont, % use the selected monospaced font
+    backgroundcolor=\color{white},
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=10pt,
+    frame=single,
+    breaklines=true,
+    captionpos=b,
+    tabsize=4
+}
+
+\title{Progress Report - Week 7 \\
+\large LLM Neuron Ablation - Determining the Impact of Structured Pruning to Large Language Model Accuracy and Energy Consumption}
+\author{
+    [Welby Seely] \\
+    \texttt{[wseely@emich.edu]}
+}
+\date{\today}
+
+\begin{document}
+
+    \maketitle
+
+
+    \section{Project Overview}\label{sec:project-overview}
+    Large Language Model (LLM) power consumption is increasingly problematic for datacenters, with \textit{The Electric Power
+    Research Institute} forecasting that data centers may see their electricity consumption double by
+    2030~\cite{kindig2024}.
+
+    Optimizing these models is key to reducing power consumption.
+    The cornerstone of optimization is determining what you need, and what you don't: determine the importance of
+    aspects and components of the system, enabling you to perform systematic optimization with certainty.
+    In Artificial Neural Networks (ANN), the atomic unit of these components is the artificial neuron.
+    To optimize an ANN, understanding the sensitivity of the neuron to changes in its input and parameters is paramount,
+    but the sheer size and complexity of LLMs makes this incredibly challenging.
+
+    Sensitivity to pruning, the removal of neurons (weight matrix rows) is the initial phase of researching this sensitivity.
+    The object of this research is to explore the impacts of removing neurons from specific components of Large Language Models, in particular decoder-only models (such as the Llama family).
+
+    \section{Current Progress}\label{sec:current-progress}
+    I'm focusing on pruning portions of the ``Tokenizer Blocks'' in the meta-llama/Meta-Llama-3-8B model.
+
+    \subsection{Llama3-8b Architecture}\label{subsec:llama-3-architecture}
+
+    Huggingface Models inherit from PyTorch's \texttt{nn.Module} which provides \texttt{modules()}, a function that provides all connected layers.
+    After loading Llama3-8b, you can simply print \texttt{model.modules()} to stdout to see all submodules in the model:
+
+    \begin{lstlisting}[label={lst:lsting1}]
+        LlamaForCausalLM(
+          (model): LlamaModel(
+            (embed_tokens): Embedding(128256, 4096)
+            (layers): ModuleList(
+              (0-31): 32 x LlamaDecoderLayer(
+                (self_attn): LlamaSdpaAttention(
+                  (q_proj): Linear(in_features=4096, out_features=4096, bias=False)
+                  (k_proj): Linear(in_features=4096, out_features=1024, bias=False)
+                  (v_proj): Linear(in_features=4096, out_features=1024, bias=False)
+                  (o_proj): Linear(in_features=4096, out_features=4096, bias=False)
+                  (rotary_emb): LlamaRotaryEmbedding()
+                )
+                (mlp): LlamaMLP(
+                  (gate_proj): Linear(in_features=4096, out_features=14336, bias=False)
+                  (up_proj): Linear(in_features=4096, out_features=14336, bias=False)
+                  (down_proj): Linear(in_features=14336, out_features=4096, bias=False)
+                  (act_fn): SiLU()
+                )
+                (input_layernorm): LlamaRMSNorm((4096,), eps=1e-05)
+                (post_attention_layernorm): LlamaRMSNorm((4096,), eps=1e-05)
+              )
+            )
+            (norm): LlamaRMSNorm((4096,), eps=1e-05)
+            (rotary_emb): LlamaRotaryEmbedding()
+          )
+          (lm_head): Linear(in_features=4096, out_features=128256, bias=False)
+        )
+    \end{lstlisting}
+
+    The Transformer Block is represented by the \texttt{LlamaDecoderLayer} class, stacked 32 times in this model.
+    The multi head self attention component is represented by \texttt{LlamaSdpaAttention}, and is comprised by 5 PyTorch layers:
+
+    \begin{enumerate}
+        \item Query Layer
+        \begin{itemize}
+            \item Generates a vector that acts as a ``question'' about the relevance of the other tokens in relation to the current token~\cite{bahdanau2016neuralmachinetranslationjointly}.
+        \end{itemize}
+        \item Key Layer
+        \begin{itemize}
+            \item Generates a vector that acts as a representation of the characteristics on the token.
+            \item This vector can answer the ``questions'' posed by other tokens~\cite{bahdanau2016neuralmachinetranslationjointly}.
+        \end{itemize}
+        \item Value Layer
+        \begin{itemize}
+            \item Represents the actual information encoded within the given token.
+            \item This will be used if the query finds it relevant~\cite{bahdanau2016neuralmachinetranslationjointly}.
+        \end{itemize}
+        \item Output Layer
+        \begin{itemize}
+            \item After the vectors are combined using \texttt{torch.nn.functional.scaled\_dot\_product\_attention()}, the output layer converts these back into embedding size~\cite{huggingface_transformers_llama}.
+        \end{itemize}
+        \item LlamaRotaryEmbeddings
+        \begin{itemize}
+            \item Encodes positional information by using Rotary Position Embedding (RoPE)~\cite{su2023roformerenhancedtransformerrotary}.
+        \end{itemize}
+    \end{enumerate}
+
+    What is not directly represented by this output is the nature of the attention heads themselves.
+    Head count is embedded in the attention layer and can be accessed through \texttt{decoder\_layer.self\_attn.num\_heads}.
+
+    \subsection{First Attempt at Pruning Attention Heads}\label{subsec:prune_heads}
+
+    I attempted pruning the input dimensions to the query (q\_proj), key (k\_proj), and value (v\_proj) layers from the first layer of the transformer.
+    There are 32 heads in the block, so in an effort to remove a head, I removed \texttt{4096 / 32 = 128} input features, and updated the embedding layer accordingly:
+
+    \begin{lstlisting}[label={lst:lsting2}]
+            LlamaForCausalLM(
+      (model): LlamaModel(
+        (embed_tokens): Embedding(128256, 3968)
+        (layers): ModuleList(
+          (0): LlamaDecoderLayer(
+            (self_attn): LlamaSdpaAttention(
+              (q_proj): Linear(in_features=3968, out_features=4096, bias=False)
+              (k_proj): Linear(in_features=3968, out_features=1024, bias=False)
+              (v_proj): Linear(in_features=3968, out_features=1024, bias=False)
+              (o_proj): Linear(in_features=3968, out_features=4096, bias=False)
+              (rotary_emb): LlamaRotaryEmbedding()
+            )
+            (mlp): LlamaMLP(
+              (gate_proj): Linear(in_features=4096, out_features=14336, bias=False)
+              (up_proj): Linear(in_features=4096, out_features=14336, bias=False)
+              (down_proj): Linear(in_features=14336, out_features=4096, bias=False)
+              (act_fn): SiLU()
+            )
+            (input_layernorm): LlamaRMSNorm((4096,), eps=1e-05)
+            (post_attention_layernorm): LlamaRMSNorm((4096,), eps=1e-05)
+          )
+          (1-31): 31 x LlamaDecoderLayer(
+            (self_attn): LlamaSdpaAttention(
+              (q_proj): Linear(in_features=4096, out_features=4096, bias=False)
+              (k_proj): Linear(in_features=4096, out_features=1024, bias=False)
+              (v_proj): Linear(in_features=4096, out_features=1024, bias=False)
+              (o_proj): Linear(in_features=4096, out_features=4096, bias=False)
+              (rotary_emb): LlamaRotaryEmbedding()
+            )
+            (mlp): LlamaMLP(
+              (gate_proj): Linear(in_features=4096, out_features=14336, bias=False)
+              (up_proj): Linear(in_features=4096, out_features=14336, bias=False)
+              (down_proj): Linear(in_features=14336, out_features=4096, bias=False)
+              (act_fn): SiLU()
+            )
+            (input_layernorm): LlamaRMSNorm((4096,), eps=1e-05)
+            (post_attention_layernorm): LlamaRMSNorm((4096,), eps=1e-05)
+          )
+        )
+        (norm): LlamaRMSNorm((4096,), eps=1e-05)
+        (rotary_emb): LlamaRotaryEmbedding()
+      )
+      (lm_head): Linear(in_features=4096, out_features=128256, bias=False)
+    )
+    \end{lstlisting}
+
+    However, this results in the error \texttt{The size of tensor a (4096) must match the size of tensor b (3968) at non-singleton dimension 2}.
+    The fundamental issue is that I don't have a proper understanding of how a ``head'' subdivides the 3 layers and combines them.
+    I've located and begun studying the source code for LlamaSdpaAttention in order to figure out how to properly prune the heads.
+    I'll also be studying the ``MultiheadAttentionPruner'' in LLM-Pruner~\cite{LLM-Pruner} to better understand head-pruning.
+    My current attempt at pruning can be found in my ``llm-test-runner'' repo~\cite{llm-test-runner}.
+
+    \section{Challenges and Issues}\label{sec:challenges-and-issues}
+    Being able to prune a specific LLM requires a deeper understanding of how its modules integrate so you don't break dimensional requirements.
+
+    \section{Next Steps}\label{sec:next-steps}
+    Study ``modeling\_llama.py'' and ``LLM Pruner'' to enable head pruning.
+    Prune a head from Llama 3--8b and measure perplexity and energy consumption, comparing to an unpruned model.
+
+    \bibliographystyle{plainurl}
+    \bibliography{bibliography}
+    \thanks Thanks to ChatGPT~\cite{chatgpt_2024} for help with PyTorch and for helping generate BibTeX citations for websites.
+
+\end{document}
