@@ -57,9 +57,118 @@
 
     \subsection{On the State of the Art}\label{subsec:on-soa-research}
 
+    The question has been posed: what sets apart this research from other state-of-the-art research?
+    Let's take a look at the first 5 comparable results for ``llm prune'' to get a feel for the gaps in research:
+
+    \begin{enumerate}
+        \item Llm-pruner: On the structural pruning of large language models (2023)~\cite{ma2023llm}
+        \begin{itemize}
+            \item Does not support pruning the LLama3 architecture, misaligining query, key, and value vectors.
+            \item Does not support the pruning of arbitrary heads.
+            \item No measurement of per-token execution time and energy consumption.
+        \end{itemize}
+        \item LLM Pruning and Distillation in Practice: The Minitron Approach (2024)~\cite{sreenivas2024llm}
+        \begin{itemize}
+            \item Prunes the MLP hidden dimension, hidden dimension (embeddings), and layers.
+            \item Does not support the pruning of arbitrary heads.
+            \item No measurement of per-token execution time and energy consumption.
+        \end{itemize}
+        \item Everybody Prune Now: Structured Pruning of LLMs with only Forward Passes (2024)~\cite{dery2024everybodyprunenowstructured}
+        \begin{itemize}
+            \item Prunes heads, but does not measure sensitivity to the pruning of heads in different layers.
+            \item No measurement of per-token execution time and energy consumption.
+        \end{itemize}
+        \item A Simple And Effective Pruning Approach For Large Language Models (2024) ~\cite{sun2024simpleeffectivepruningapproach}
+        \begin{itemize}
+            \item Prunes heads, but does not measure sensitivity to the pruning of heads in different layers.
+            \item No measurement of per-token execution time and energy consumption.
+        \end{itemize}
+        \item Large Language Model Pruning (2024) ~\cite{huang2024largelanguagemodelpruning}
+        \begin{itemize}
+            \item Prunes heads, but does not measure sensitivity to the pruning of heads in different layers.
+            \item No measurement of per-token execution time and energy consumption.
+        \end{itemize}
+    \end{enumerate}
+
+    To conclude, this research fills a gap in current literature in the following ways:
+
+    \begin{enumerate}
+        \item Provides a framework to structurally prune all modules of a Decoder-based LLM
+        \begin{itemize}
+            \item Currently the Llama model is supported with Decoder Layer and Attention Head pruning implemented.
+            \item All other layers will be eventually supported along with additional LLM models.
+        \end{itemize}
+        \item Records energy usage and time per token as fundamental metrics
+        \item Measures the holistic sensitivity of a Decoder-based LLM to the pruning of all modules.
+    \end{enumerate}
+
     \subsection{The Importance of The First Layer}\label{subsec:first-layer}
 
-    \subsection{Improvements to Head Pruning}\label{subsec:prune_heads}
+    A recap from my presentation on the results from layer pruning:
+
+    \begin{itemize}
+        \item Unpruned:
+        \begin{itemize}
+            \item execution\_time = 127.78 s
+            \item energy\_usage = 34120.99 J
+            \item average\_time\_per\_token = 12.93 ms
+            \item average\_energy\_per\_token\_mj = 3.45 J
+            \item Perplexity: 2.546875
+        \end{itemize}
+
+        \item Layers 16 and 17:
+        \begin{itemize}
+            \item execution\_time = 121.44 s
+            \item energy\_usage = 32816.33 J
+            \item average\_time\_per\_token = 12.04 ms
+            \item average\_energy\_per\_token\_mj = 3.25 J
+            \item Perplexity: 2.875
+        \end{itemize}
+
+        \item Layer 1:
+        \begin{itemize}
+            \item execution\_time = 40.27 s
+            \item energy\_usage = 9468.39 J
+            \item average\_time\_per\_token = 7.53 ms
+            \item average\_energy\_per\_token\_mj = 1.77 J
+            \item Perplexity: 9.875
+        \end{itemize}
+    \end{itemize}
+
+    The reduction in time per token and especially energy usage is drastic.
+    There is no special structural consideration for the first decoder layer in the LlamaModel\#\_\_init\_\_:
+
+    \begin{lstlisting}[language=Python,label={lst:lstlisting1}]
+        self.layers = nn.ModuleList(
+            [LlamaDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
+        )
+    \end{lstlisting}
+
+    The decoder layer initialization does consider the index, but only passes it down to self attention module:
+
+    \begin{lstlisting}[language=Python,label={lst:lstlisting2}]
+        def __init__(self, config: LlamaConfig, layer_idx: int):
+            super().__init__()
+            self.hidden_size = config.hidden_size
+
+            self.self_attn = LLAMA_ATTENTION_CLASSES[config._attn_implementation](config=config, layer_idx=layer_idx)
+            ...
+    \end{lstlisting}
+
+    This index is passed to the multihead-attention mechanism for purposes of story with the cache.
+    I believe the cache is responsible for the drastic reduction in energy usage: it appears to be the only mutable component that can explain it.
+
+    \begin{lstlisting}[language=Python,label={lst:lstlisting3}]
+        ks_pos_per_kvhead, vs_per_kvhead = past_key_value.update(ks_pos_per_kvhead, vs_per_kvhead, self.layer_idx,
+        cache_kwargs)
+
+        ...
+
+       return attn_projected, None, past_key_value
+    \end{lstlisting}
+
+    This cache is then actually accessed in the forward pass of ``LlamaModel'' as it processes decoder layers - I believe the model is encountering successive cache hits when the first layer is pruned.
+    I need to finish my analysis of its usage in ``LlamaModel's'' forward pass to confirm this.
 
     \subsection{Additional Metrics}
 
@@ -73,15 +182,40 @@
         \item Perplexity
     \end{enumerate}
 
+    I'm looking into the integrating the following additional metrics:
 
-    Layer-wise relevance propagation ~\cite{voita2019analyzingmultiheadselfattentionspecialized}
+    \begin{enumerate}
+        \item Memory Usage
+        \begin{itemize}
+            \item I've already implemented methods for this, I just haven't integrated it into the test loop yet.
+        \end{itemize}
+        \item Layer-wise relevance propagation ~\cite{voita2019analyzingmultiheadselfattentionspecialized}
+        \item Validation loss ~\cite{sreenivas2024llm}
+        \item Wino-grande accuracy ~\cite{sreenivas2024llm}
+    \end{enumerate}
 
     \section{Challenges and Issues}\label{sec:challenges-and-issues}
 
+    I need help with deciding on the finalization of my scope and making sure I'm focusing on the right issues.
+
     \section{Questions or Feedback Needed}\label{sec:questions-or-feedback-needed}
+
+    With a precious three weeks left before the final presentation, I need to finalize my scope for the semester.
+    Please let me know if there's anything you'd like me to focus on; do my next steps look good?
 
     \section{Next Steps}\label{sec:next-steps}
 
+    \begin{enumerate}
+        \item Finish analysis of the importance of the first Decoder layer in the Llama 3 architecture.
+        \item Improve my implementation of ``PrunedLlamaSdpaAttention'' - key-value heads should be pruned if all of the previously aligned attention heads are removed.
+        \item Add additional metrics - memory usage at the bare minimum.
+        \item Systematically capture metrics when pruning Decoder layers and attention heads.
+        Tabulate and graph these findings.
+        \item Code cleanup - it's messy right now.
+        \item Stretch goal - implement pruning of additional modules in the Llama 3 architecture.
+    \end{enumerate}
+
+    As always, my code can be found at https://github.com/crimsonmagick/llm-test-runner~\cite{llm-test-runner}.
 
     \bibliographystyle{plainurl}
     \bibliography{bibliography}
