@@ -1,0 +1,90 @@
+\documentclass{article}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{graphicx}
+\usepackage[colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue]{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{enumitem}
+
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\footnotesize\selectfont, % use the selected monospaced font
+    backgroundcolor=\color{white},
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=10pt,
+    frame=single,
+    breaklines=true,
+    captionpos=b,
+    tabsize=4
+}
+
+\title{Progress Report - Week 8 \\
+\large LLM Neuron Ablation - Determining the Impact of Structured Pruning to Large Language Model Accuracy and Energy Consumption}
+\author{
+    [Welby Seely] \\
+    \texttt{[wseely@emich.edu]}
+}
+\date{\today}
+
+\begin{document}
+
+    \maketitle
+
+
+    \section{Project Overview}\label{sec:project-overview}
+    Large Language Model (LLM) power consumption is increasingly problematic for datacenters, with \textit{The Electric Power
+    Research Institute} forecasting that data centers may see their electricity consumption double by
+    2030~\cite{kindig2024}.
+
+    Optimizing these models is key to reducing power consumption.
+    The cornerstone of optimization is determining what you need, and what you don't: determine the importance of
+    aspects and components of the system, enabling you to perform systematic optimization with certainty.
+    In Artificial Neural Networks (ANN), the atomic unit of these components is the artificial neuron.
+    To optimize an ANN, understanding the sensitivity of the neuron to changes in its input and parameters is paramount,
+    but the sheer size and complexity of LLMs makes this incredibly challenging.
+
+    Sensitivity to pruning, the removal of neurons (weight matrix rows) is the initial phase of researching this sensitivity.
+    The object of this research is to explore the impacts of removing neurons from specific components of Large Language Models, in particular decoder-only models (such as the Llama family).
+
+    \section{Current Progress}\label{sec:current-progress}
+
+    \subsection{On the State of the Art}\label{subsec:on-soa-research}
+
+    \subsection{The Importance of The First Layer}\label{subsec:first-layer}
+
+    \subsection{Improvements to Head Pruning}\label{subsec:prune_heads}
+
+    \subsection{Additional Metrics}
+
+    Currently, I'm evaluating the effects of pruning by measuring:
+
+    \begin{enumerate}
+        \item Total Energy Usage
+        \item Energy-Per-Token
+        \item Total Execution Time
+        \item Time-Per-Token
+        \item Perplexity
+    \end{enumerate}
+
+
+    Layer-wise relevance propagation ~\cite{voita2019analyzingmultiheadselfattentionspecialized}
+
+    \section{Challenges and Issues}\label{sec:challenges-and-issues}
+
+    \section{Questions or Feedback Needed}\label{sec:questions-or-feedback-needed}
+
+    \section{Next Steps}\label{sec:next-steps}
+
+
+    \bibliographystyle{plainurl}
+    \bibliography{bibliography}
+    \thanks Thanks to ChatGPT~\cite{chatgpt_2024} for help with PyTorch and for helping generate BibTeX citations for websites.
+
+\end{document}

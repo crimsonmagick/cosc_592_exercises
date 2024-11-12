@@ -1,0 +1,21 @@
+Li, J., Wang, X., Yang, B., Shi, S., Lyu, M. R., & Tu, Z. (2020). Neuron Interaction Based Representation Composition for Neural Machine Translation. Proceedings of the AAAI Conference on Artificial Intelligence, 34(05), 8204-8211. https://doi.org/10.1609/aaai.v34i05.6334
+
+@misc{pochinkov2024investigatingneuronablationattention,
+      title={Investigating Neuron Ablation in Attention Heads: The Case for Peak Activation Centering},
+      author={Nicholas Pochinkov and Ben Pasero and Skylar Shibayama},
+      year={2024},
+      eprint={2408.17322},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2408.17322},
+}
+
+@misc{miller2024transformercircuitfaithfulnessmetrics,
+      title={Transformer Circuit Faithfulness Metrics are not Robust},
+      author={Joseph Miller and Bilal Chughtai and William Saunders},
+      year={2024},
+      eprint={2407.08734},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2407.08734},
+}

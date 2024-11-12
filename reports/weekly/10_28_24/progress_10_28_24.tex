@@ -119,67 +119,6 @@
         \end{itemize}
     \end{enumerate}
 
-    What is not directly represented by this output is the nature of the attention heads themselves.
-    Head count is embedded in the attention layer and can be accessed through \texttt{decoder\_layer.self\_attn.num\_heads}.
-
-    \subsection{First Attempt at Pruning Attention Heads}\label{subsec:prune_heads}
-
-    I attempted pruning the input dimensions to the query (q\_proj), key (k\_proj), and value (v\_proj) layers from the first layer of the transformer.
-    There are 32 heads in the block, so in an effort to remove a head, I removed \texttt{4096 / 32 = 128} input features, and updated the embedding layer accordingly:
-
-    \begin{lstlisting}[label={lst:lsting2}]
-            LlamaForCausalLM(
-      (model): LlamaModel(
-        (embed_tokens): Embedding(128256, 3968)
-        (layers): ModuleList(
-          (0): LlamaDecoderLayer(
-            (self_attn): LlamaSdpaAttention(
-              (q_proj): Linear(in_features=3968, out_features=4096, bias=False)
-              (k_proj): Linear(in_features=3968, out_features=1024, bias=False)
-              (v_proj): Linear(in_features=3968, out_features=1024, bias=False)
-              (o_proj): Linear(in_features=3968, out_features=4096, bias=False)
-              (rotary_emb): LlamaRotaryEmbedding()
-            )
-            (mlp): LlamaMLP(
-              (gate_proj): Linear(in_features=4096, out_features=14336, bias=False)
-              (up_proj): Linear(in_features=4096, out_features=14336, bias=False)
-              (down_proj): Linear(in_features=14336, out_features=4096, bias=False)
-              (act_fn): SiLU()
-            )
-            (input_layernorm): LlamaRMSNorm((4096,), eps=1e-05)
-            (post_attention_layernorm): LlamaRMSNorm((4096,), eps=1e-05)
-          )
-          (1-31): 31 x LlamaDecoderLayer(
-            (self_attn): LlamaSdpaAttention(
-              (q_proj): Linear(in_features=4096, out_features=4096, bias=False)
-              (k_proj): Linear(in_features=4096, out_features=1024, bias=False)
-              (v_proj): Linear(in_features=4096, out_features=1024, bias=False)
-              (o_proj): Linear(in_features=4096, out_features=4096, bias=False)
-              (rotary_emb): LlamaRotaryEmbedding()
-            )
-            (mlp): LlamaMLP(
-              (gate_proj): Linear(in_features=4096, out_features=14336, bias=False)
-              (up_proj): Linear(in_features=4096, out_features=14336, bias=False)
-              (down_proj): Linear(in_features=14336, out_features=4096, bias=False)
-              (act_fn): SiLU()
-            )
-            (input_layernorm): LlamaRMSNorm((4096,), eps=1e-05)
-            (post_attention_layernorm): LlamaRMSNorm((4096,), eps=1e-05)
-          )
-        )
-        (norm): LlamaRMSNorm((4096,), eps=1e-05)
-        (rotary_emb): LlamaRotaryEmbedding()
-      )
-      (lm_head): Linear(in_features=4096, out_features=128256, bias=False)
-    )
-    \end{lstlisting}
-
-    However, this results in the error \texttt{The size of tensor a (4096) must match the size of tensor b (3968) at non-singleton dimension 2}.
-    The fundamental issue is that I don't have a proper understanding of how a ``head'' subdivides the 3 layers and combines them.
-    I've located and begun studying the source code for LlamaSdpaAttention in order to figure out how to properly prune the heads.
-    I'll also be studying the ``MultiheadAttentionPruner'' in LLM-Pruner~\cite{LLM-Pruner} to better understand head-pruning.
-    My current attempt at pruning can be found in my ``llm-test-runner'' repo~\cite{llm-test-runner}.
-
     \section{Challenges and Issues}\label{sec:challenges-and-issues}
     Being able to prune a specific LLM requires a deeper understanding of how its modules integrate so you don't break dimensional requirements.
 

@@ -27,7 +27,7 @@ if __name__ == '__main__':
     input_neurons = 2
     hidden_neurons = 3
     output_neurons = 1
-    learning_rate = 11
+    learning_rate = 0.1
 
     w_hidden = np.random.uniform(size=(input_neurons, hidden_neurons))
     b_hidden = np.random.uniform(size=(1, hidden_neurons))
@@ -50,7 +50,7 @@ if __name__ == '__main__':
             break
         g_out = error * sigmoid_prime(output)
         w_output -= learning_rate * np.dot(input_2_hidden_out.T, g_out)
-        b_output -= learning_rate * np.sum(g_out, axis=0, keepdims=True)
+        b_output -= learning_rate * np.sum(g_out, axis=0, keepdims=False)
 
         g_hidden = np.dot(g_out, w_output.T) * sigmoid_prime(input_2_hidden_out)
         w_hidden -= learning_rate * np.dot(xor_input.T, g_hidden)
