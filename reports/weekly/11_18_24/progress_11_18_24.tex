@@ -1,0 +1,246 @@
+\documentclass{article}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{graphicx}
+\usepackage[colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue]{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{enumitem}
+
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\footnotesize\selectfont, % use the selected monospaced font
+    backgroundcolor=\color{white},
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=10pt,
+    frame=single,
+    breaklines=true,
+    captionpos=b,
+    tabsize=4
+}
+
+\title{Progress Report - Week 9 \\
+\large LLM Neuron Ablation - Determining the Impact of Structured Pruning to Large Language Model Accuracy and Energy Consumption}
+\author{
+    [Welby Seely] \\
+    \texttt{[wseely@emich.edu]}
+}
+\date{\today}
+
+\begin{document}
+
+    \maketitle
+
+
+    \section{Project Overview}\label{sec:project-overview}
+    Large Language Model (LLM) power consumption is increasingly problematic for datacenters, with \textit{The Electric Power
+    Research Institute} forecasting that data centers may see their electricity consumption double by
+    2030~\cite{kindig2024}.
+
+    Optimizing these models is key to reducing power consumption.
+    The cornerstone of optimization is determining what you need, and what you don't: determine the importance of
+    aspects and components of the system, enabling you to perform systematic optimization with certainty.
+    In Artificial Neural Networks (ANN), the atomic unit of these components is the artificial neuron.
+    To optimize an ANN, understanding the sensitivity of the neuron to changes in its input and parameters is paramount,
+    but the sheer size and complexity of LLMs makes this incredibly challenging.
+
+    Sensitivity to pruning, the removal of neurons (weight matrix rows) is the initial phase of researching this sensitivity.
+    The object of this research is to explore the impacts of removing neurons from specific components of Large Language Models, in particular decoder-only models (such as the Llama family).
+
+    \section{Current Progress}\label{sec:current-progress}
+
+    \subsection{Key and Value Head Pruning}\label{subsec:key-and-value-project-pruning}
+
+    I improved the implementation of ``PrunedLlamaSdpaAttention'' - key-value heads are now pruned if all the
+    previously aligned attention heads have likewise been removed.
+    This makes the attention head pruning truly ``complete'' from a structural point of view.
+
+    Head pruning is still based on pruning the query heads; key-value heads are subservient to the query,
+    shared amongst quest attention heads in groups.
+    Because we're pruning arbitrary heads, we need to first determine which key-value heads we still need:
+
+    \begin{lstlisting}[label={lst:get_keep_kv_heads}]
+        @staticmethod
+        def get_keep_kv_heads(keep_hds, num_groups):
+            kv_heads = {hd // num_groups for hd in keep_hds}
+            return list(kv_heads)
+    \end{lstlisting}
+
+    Integer division makes it easy to track which key-value heads we'll still need using a set.
+
+    I then reused my previously defined ``get\_keep\_indices'' method:
+    \begin{lstlisting}[label={lst:get_keep_indices}]
+        @staticmethod
+        def get_keep_indices(keep_hds, head_dim):
+            return list(chain.from_iterable(map(lambda i: range(head_dim * i, head_dim * (i + 1)), keep_hds)))
+    \end{lstlisting}
+
+    Now we have the indices we need to prune after the model is loaded.
+    \\
+    I register the indices as a buffer with pytorch so that they are moved along with the rest of the modules to the ``cuda'' device:
+
+    \begin{lstlisting}[label={lst:keep_kv_idxs}]
+                self.register_buffer('keep_kv_idxs',
+                             torch.tensor(self.get_keep_indices(self.keep_kv_heads, self.head_dim),
+                                          dtype=torch.long,
+                                          device=self.q_proj.weight.device), False)
+    \end{lstlisting}
+
+    Now we can readily prune the ``k\_proj'' and ``v\_proj'' nn.Linear layers in the ``prune()'' method:
+
+    \begin{lstlisting}[label={lst:prune}]
+        def prune(self):
+        if self.pruned_heads is not None:
+        # TODO validate prune_heads, integrate with PretrainedModel#prune_heads
+        self.q_proj = self.prune_linear(self.q_proj, self.keep_idxs, 0)
+        self.o_proj = self.prune_linear(self.o_proj, self.keep_idxs, 1)
+        self.num_heads = self.num_heads - len(self.pruned_heads)
+
+        # NEW now we're pruning the key and value projections
+        self.k_proj = self.prune_linear(self.k_proj, self.keep_kv_idxs, 0)
+        self.v_proj = self.prune_linear(self.v_proj, self.keep_kv_idxs, 0)
+        self.num_key_value_heads = len(self.keep_kv_heads)
+    \end{lstlisting}
+
+    Finally, this leaves rewriting the ``repeat\_kv'' method.
+    This method is responsible for preparing the key-value states for the Scaled Dot Product Attention (SDPA) calculation.
+    \\ \\
+    The original method is:
+    \begin{lstlisting}[label={lst:original repeat_kv}]
+        @staticmethod
+        def repeat_kv(hidden_states: torch.Tensor, n_rep: int) -> torch.Tensor:
+            """
+            This is the equivalent of torch.repeat_interleave(x, dim=1, repeats=n_rep). The hidden states go from (batch,
+            num_key_value_heads, seqlen, head_dim) to (batch, num_attention_heads, seqlen, head_dim)
+            """
+            batch, num_key_value_heads, slen, head_dim = hidden_states.shape
+            if n_rep == 1:
+                return hidden_states
+            hidden_states = hidden_states[:, :, None, :, :].expand(batch, num_key_value_heads, n_rep, slen, head_dim)
+            return hidden_states.reshape(batch, num_key_value_heads * n_rep, slen, head_dim)
+    \end{lstlisting}
+
+    The method needs to be updated to account for the removal of arbitrary query heads while retaining alignment with the key-value states.
+    The number of attention heads associated with a given key-value head can be readily calculated using a dictionary/hashmap:
+
+    \begin{lstlisting}[label={lst:Calculating query heads per key-value head}]
+    @staticmethod
+    def build_pruned_kv_counts(keep_heads, num_key_value_groups) -> list[int]:
+        kv_counts = dict()
+        for i in keep_heads:
+        group_idx = i // num_key_value_groups
+        if group_idx not in kv_counts:
+        kv_counts[group_idx] = 0
+        kv_counts[group_idx] += 1
+        return list(kv_counts.values())
+    \end{lstlisting}
+
+    Now we can rewrite the repeat method by repeating key-value heads on a per key-value head basis:
+
+    \begin{lstlisting}[label={lst:intail_repeat_pruned}]
+        @staticmethod
+        def repeat_kv_pruned(states_per_kvhead: torch.Tensor, pruned_kv_counts: list[int]) -> torch.Tensor:
+        """
+        The hidden states go from (batch, num_key_value_heads (ignored), seqlen, head_dim) to
+        (batch, num_attention_heads, seqlen, head_dim)
+        """
+        batch, _, seq_len, head_dim = states_per_kvhead.shape
+        splits = states_per_kvhead.split(1, dim=1)
+        zipped = zip(splits, pruned_kv_counts)
+        repeated = tuple(map(lambda t: t[0].expand(batch, t[1], seq_len, head_dim), zipped))
+        return torch.cat(repeated, dim=1)
+    \end{lstlisting}
+
+    This can be made much more terse, and the original repeat method hints as to how: by using ``torch.repeat\_interleave()''.
+
+    \begin{lstlisting}[label={lst:updated}]
+    @staticmethod
+        def repeat_kv_pruned(states_per_kvhead: torch.Tensor, pruned_kv_counts) -> torch.Tensor:
+            """
+            The hidden states go from (batch, num_key_value_heads, seqlen, head_dim) to
+            (batch, num_attention_heads, seqlen, head_dim)
+            """
+            # Repeat states along the 1st dimension (specific key_value_heads) according to `pruned_kv_counts`
+            return states_per_kvhead.repeat_interleave(pruned_kv_counts, dim=1)
+    \end{lstlisting}
+
+    If we wanted, we could just inline the repetition in the ``forward()'' function, but I'm keeping it separate to make it easier for subclasses to override in the future.
+
+    \section{Challenges and Issues}\label{sec:challenges-and-issues}
+
+    I'm working on adding tests for the head pruning to give me confidence in its correctness.
+
+    \begin{lstlisting}[label={lst:tests}]
+        import torch
+        from torch import tensor
+
+        from llama.models.modeling_pruned_llama import PrunedLlamaSdpaAttention
+
+        # Sample inputs
+        batch = 2
+        num_key_value_heads = 3
+        seqlen = 4
+        head_dim = 5
+        n_rep = 2
+
+        # Generate dummy tensor
+        hidden_states = torch.randn(batch, num_key_value_heads, seqlen, head_dim)
+
+        # Repeat using repeat_kv
+        output_repeat_kv = PrunedLlamaSdpaAttention.repeat_kv(hidden_states, n_rep)
+
+        # Construct pruned_kv_counts for uniform repetition
+        pruned_kv_counts = tensor([n_rep] * num_key_value_heads)
+
+        # Repeat using repeat_kv_pruned
+        output_repeat_kv_pruned = PrunedLlamaSdpaAttention.repeat_kv_pruned(hidden_states, pruned_kv_counts)
+
+        # Validate outputs
+        assert torch.equal(output_repeat_kv, output_repeat_kv_pruned), "Outputs are not equivalent"
+        assert output_repeat_kv.shape == (batch, num_key_value_heads * n_rep, seqlen, head_dim), "Shape mismatch"
+        print("Outputs are equivalent and aligned.")
+
+        # Simulate pruning: keep_heads = [0, 1, 3], num_key_value_groups = 2
+        pruned_kv_counts = tensor([2, 1])  # Example: group 0 keeps 2 heads, group 1 keeps 1 head
+        hidden_states_pruned = torch.randn(batch, len(pruned_kv_counts), seqlen, head_dim)
+
+        # Repeat using repeat_kv_pruned with non-uniform counts
+        output_repeat_kv_pruned = PrunedLlamaSdpaAttention.repeat_kv_pruned(hidden_states_pruned, pruned_kv_counts)
+
+        # Check the shape
+        expected_heads = pruned_kv_counts.sum().item()  # Total heads after repetition
+        assert output_repeat_kv_pruned.shape == (batch, expected_heads, seqlen, head_dim), "Shape mismatch for pruned case"
+
+        print(f"Output shape with pruning: {output_repeat_kv_pruned.shape}")
+    \end{lstlisting}
+
+    I need to convert this to use the Python unittest framework, expand on the tests for non uniformity, and expand tests to check the ``forward()'' method for alignment.
+
+    \section{Next Steps}\label{sec:next-steps}
+
+    In the order that I intend to complete them:
+
+    \begin{enumerate}
+        \item Finish implementing unit tests to ensure alignment.
+        \item Add additional metrics - memory usage at the bare minimum.
+        \item Systematically capture metrics when pruning Decoder layers and attention heads.
+        Tabulate and graph these findings.
+        \item Finish analysis of the importance of the first Decoder layer in the Llama 3 architecture.
+        \item Code cleanup - it's messy right now.
+        This will be partially done as a part of capturing metrics - the test harness needs to be updated to support systematic head pruning.
+        \item Stretch goal - implement pruning of additional modules in the Llama 3 architecture.
+    \end{enumerate}
+
+    As always, my code can be found at https://github.com/crimsonmagick/llm-test-runner~\cite{llm-test-runner}.
+
+    \bibliographystyle{plainurl}
+    \bibliography{bibliography}
+    \thanks Thanks to ChatGPT~\cite{chatgpt_2024} for help with PyTorch and for helping generate BibTeX citations for websites.
+
+\end{document}
