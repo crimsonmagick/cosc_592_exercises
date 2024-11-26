@@ -1,0 +1,184 @@
+\documentclass{article}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{graphicx}
+\usepackage[colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue]{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{enumitem}
+
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\footnotesize\selectfont, % use the selected monospaced font
+    backgroundcolor=\color{white},
+    keywordstyle=\color{blue},
+    commentstyle=\color{gray},
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=10pt,
+    frame=single,
+    breaklines=true,
+    captionpos=b,
+    tabsize=4
+}
+
+\title{Progress Report - Week 10 \\
+\large LLM Neuron Ablation - Determining the Impact of Structured Pruning to Large Language Model Accuracy and Energy Consumption}
+\author{
+    [Welby Seely] \\
+    \texttt{[wseely@emich.edu]}
+}
+\date{\today}
+
+\begin{document}
+
+    \maketitle
+
+
+    \section{Project Overview}\label{sec:project-overview}
+    Large Language Model (LLM) power consumption is increasingly problematic for datacenters, with \textit{The Electric Power
+    Research Institute} forecasting that data centers may see their electricity consumption double by
+    2030~\cite{kindig2024}.
+
+    Optimizing these models is key to reducing power consumption.
+    The cornerstone of optimization is determining what you need, and what you don't: determine the importance of
+    aspects and components of the system, enabling you to perform systematic optimization with certainty.
+    In Artificial Neural Networks (ANN), the atomic unit of these components is the artificial neuron.
+    To optimize an ANN, understanding the sensitivity of the neuron to changes in its input and parameters is paramount,
+    but the sheer size and complexity of LLMs makes this incredibly challenging.
+
+    Sensitivity to pruning, the removal of neurons (weight matrix rows) is the initial phase of researching this sensitivity.
+    The object of this research is to explore the impacts of removing neurons from specific components of Large Language Models, in particular decoder-only models (such as the Llama family).
+
+
+    \section{Current Progress}\label{sec:current-progress}
+
+    \subsection{Unit Tests for repeat\_kv\_pruned}\label{subsec:unit-tests-for-repeat_kv_pruned}
+
+    I finished implementing tests to prove out alignment on both the uniform and non-uniform cases of ``repeat\_kv\_pruned'',
+    giving confidence that alignment is being preserved in that particular piece of the attention module:
+
+    \begin{lstlisting}[label={lst:repeat_kv_pruned}]
+        import unittest
+
+        import torch
+        from torch import tensor
+
+        from src.llama.models.modeling_pruned_llama import PrunedLlamaSdpaAttention
+        from transformers.models.llama.modeling_llama import repeat_kv
+
+
+        class TestRepeatKvPruned(unittest.TestCase):
+            """
+            Tests to assert alignment correctness of :meth:`PrunedLlamaSdpaAttention#repeat_kv_pruned`.
+            """
+
+            def setUp(self):
+                # Initial test parameters, arbitrarily chosen, but kept small for simplicity's sake.
+                self.batch_size = 12
+                self.seq_len = 4
+                self.head_dim = 5
+
+            def test_kv_states_uniform(self):
+                # Construct pruned_kv_counts for uniform repetition
+                n_rep = 2
+                num_key_value_heads = 3
+                uniform_kv_counts = tensor([n_rep] * num_key_value_heads)
+                # Generate dummy tensor for test input
+                states_per_kv_head = torch.randn(self.batch_size, num_key_value_heads, self.seq_len, self.head_dim)
+
+                expected_repeat_kv = repeat_kv(states_per_kv_head, n_rep)
+                under_test_repeat_kv = PrunedLlamaSdpaAttention.repeat_kv_pruned(states_per_kv_head, uniform_kv_counts)
+
+                self.assertEqual((self.batch_size, num_key_value_heads * n_rep, self.seq_len, self.head_dim),
+                                 under_test_repeat_kv.shape, "Repeated Key-Values Shape mismatch")
+                self.assertTrue(torch.equal(expected_repeat_kv, under_test_repeat_kv),
+                                "Repeated Key-Values do not match expected Key-Values")
+
+            def test_kv_states_non_uniform(self):
+                # Simulate pruning: keep_heads = [0, 1, 3], num_key_value_groups = 2
+                pruned_kv_counts = tensor([2, 1])  # Example: group 0 keeps 2 heads, group 1 keeps 1 head
+                # Generate dummy tensor for test input
+                states_per_kvhead = torch.randn(self.batch_size, len(pruned_kv_counts), self.seq_len, self.head_dim)
+
+                expected_repeated_kv = self.get_expected_repeated_kv(states_per_kvhead, pruned_kv_counts)
+                expected_repeated_count = sum(pruned_kv_counts)
+
+                under_test_repeated_kv = PrunedLlamaSdpaAttention.repeat_kv_pruned(states_per_kvhead, pruned_kv_counts)
+
+                self.assertEqual((self.batch_size, expected_repeated_count, self.seq_len, self.head_dim),
+                                 under_test_repeated_kv.shape, "Repeated Key-Values Shape mismatch")
+                self.assertTrue(torch.equal(expected_repeated_kv, under_test_repeated_kv),
+                                "Repeated Key-Values do not match expected Key-Values")
+
+            def get_expected_repeated_kv(self, states_per_kvhead, pruned_kv_counts):
+                splits = states_per_kvhead.split(1, dim=1)
+                zipped = zip(splits, pruned_kv_counts)
+                expected_repeated = tuple(map(lambda t: t[0].expand(self.batch_size, t[1], self.seq_len, self.head_dim), zipped))
+                return torch.cat(expected_repeated, dim=1)
+
+
+        if __name__ == '__main__':
+            unittest.main()
+
+    \end{lstlisting}
+
+    The uniform test, ``test\_kv\_states\_uniform'' compares LlamaSdpaAttention\#repeat\_kv\_pruned against the original implementation, ``repeat\_kfv\_pruned'', in the Transformers library.
+    These should be functionally equivalent since the KV heads are being repeated evenly.
+
+    The non-unform test, ``test\_kv\_states\_non\_uniform'', uses manually repeated KV heads as the expected input, which should again be functionally equivalent.
+
+    The tests are written using Python's ``unittest'' module, and can be run using the following command from the root of the project: ``python -m unittest discover''.
+
+    These tests will eventually be expanded into a proper test suite as new custom modules and the framework at large expands.
+
+    \subsection{Added memory metric to evaluation framework}\label{subsec:added-memory-metric-to-evaluation-framework}
+
+    Added simple metrics for memory usage, both allocated and reserved memory:
+    \begin{lstlisting}[label={lst:memory}]
+        logger.info(f"Allocated Memory: {torch.cuda.memory_allocated() / 1024 ** 2:.2f} MB")
+        logger.info(f"Reserved Memory: { torch.cuda.memory_reserved() / 1024 ** 2:.2f} MB")
+    \end{lstlisting}
+
+    I'm not seeing a reduction in the memory footprint after adding these metrics, though the energy and execution time savings are readily apparent.
+    I need to investigate this to make sure the original projection layers are not being referenced in the Llama modules somewhere, and are in fact being properly garbage collected.
+    I still expect the reduction in memory usage to be comparatively smaller than energy savings, since I'm only pruning the attention heads.
+
+    \subsection{Refactoring}\label{subsec:refactoring}
+
+    Began refactoring the codebase to enable systematic metric capturing.
+    Code has been moved into a proper ``src'' hierarchy, with code placed in ``evaluation'', ``llama'', ``metrics'', and ``pruning'' directories.
+    These will all eventually become proper modules.
+
+    ``requirements.txt'' updated to be up-to-date and no longer contain any local references (was previously running against a custom version of the transformers library I'm playing with locally.)
+
+    Worked on evaluating prompts in proper batches to speed up inference - each sequence needs to be of equal length for inference, encountering an error while padding out prompts.
+    This will be fixed shortly.
+
+    \section{Next Steps}\label{sec:next-steps}
+
+    In the order that I intend to complete them:
+
+    \begin{enumerate}
+        \item Investigate memory usage.
+        \item Systematically capture metrics when pruning Decoder layers and attention heads.
+        Tabulate and graph these findings.
+        \item Finish analysis of the importance of the first Decoder layer in the Llama 3 architecture.
+        \item Code cleanup - it's messy right now.
+        This will be partially done as a part of capturing metrics - the test harness needs to be updated to support systematic head pruning.
+        \item Stretch goal - implement pruning of additional modules in the Llama 3 architecture.
+    \end{enumerate}
+
+    Items 1 and 2 will be completed this week in preparation for the final presentation of the semester.
+    For item 2 I will be persisting metrics to CSV format and then graphed using Matplotlib.
+
+    As always, my code can be found at https://github.com/crimsonmagick/llm-test-runner~\cite{llm-test-runner}.
+
+    \bibliographystyle{plainurl}
+    \bibliography{bibliography}
+    \thanks Thanks to ChatGPT~\cite{chatgpt_2024} for help with PyTorch and for helping generate BibTeX citations for websites.
+
+\end{document}
