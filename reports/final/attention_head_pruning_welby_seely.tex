@@ -10,7 +10,7 @@
 T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 \begin{document}
 
-    \title{Structured Attention Head Pruning in Decoder Transformers}
+    \title{Attention Head Structured Pruning in Decoder Transformers}
 
     \author{\IEEEauthorblockN{Welby Seely}
     \IEEEauthorblockA{\textit{Embedded AI Systems Lab} \\
@@ -57,7 +57,7 @@ T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
     \section{Related Works}
 
     An initial literature review was performed to identify gaps in the current research.
-    Using Google Scholar\cite{GoogleScholar}, here are the gaps identified in the top 5 relevant works for the query ``llm pruning'':
+    Using Google Scholar~\cite{GoogleScholar}, here are the gaps identified in the top 5 relevant works for the query ``llm pruning'':
 
     \begin{enumerate}
         \item Llm-pruner: On the structural pruning of large language models (2023)~\cite{ma2023llm}
@@ -129,7 +129,7 @@ T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
     GQA compromises by sharing a limited number KV heads between multiple query heads grouped together~\cite{ainslie2023gqatraininggeneralizedmultiquery}.
 
     Structural pruning was thus implemented based on query attention heads, eliminating KV Heads only if the entire Q Head group has been pruned.
-    A visualization of this pruning is provided in figures~\ref{fig:gqa1},~\ref{fig:gqa2},~\ref{fig:gqa3}.
+    A visualization of this pruning is provided in Figures~\ref{fig:gqa1},~\ref{fig:gqa2},~\ref{fig:gqa3}.
 
     \begin{figure}[!htbp]
         \centerline{\includegraphics[width=0.66\columnwidth]{Unpruned GQA}}
@@ -213,26 +213,86 @@ T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
     The dataset used for evaluation was wikitext-2-v1~\cite{merity2016pointersentinelmixturemodels}.
     Each layer was assessed with a batch size of 5 across 25 prompts, running on an RTX 4090 GPU with the desktop environment disabled.
     The only process accessing CUDA during the test was the pruning framework, verified using the \textit{nvidia-smi} command line tool~\cite{nvidia_smi}.
-    Persistence mode was enabled using \texit{nvidia-smi} to ensure the driver was not unloaded mid-test.
+    Persistence mode was enabled using \textit{nvidia-smi} to ensure the driver was not unloaded mid-test.
 
     Metrics were captured on a per-layer basis under two conditions: pruning all attention heads, and pruning every other attention head, the results averaged together.
     This is a rudimentary combination designed to gain an understanding of per-layer sensitivity within time-constraints: future tests will be more comprehensive, using progressive attention head pruning to collect more comprehensive metrics on a per-layer basis with the grain of the attention head.
 
     \section{Results and Discussion}
     \subsection{Perplexity}
-    Perplexity measurements revealed that early layers were the most sensitive to pruning, with the first layer exhibiting over a 25\% degradation in perplexity compared to the baseline. Layers 20 through 28 were identified as good candidates for approximation due to their lower sensitivity.
+    Perplexity measurements revealed that early layers were the most sensitive to pruning, with the first layer exhibiting over a 25\% degradation in perplexity compared to the baseline.
+    Layers 19 through 28 were identified as good candidates for approximation due to their lower sensitivity.
+
+    Results are graphed in Figure~\ref{fig:perplexity}.
 
     \subsection{Energy Consumption and Evaluation Time}
-    Energy consumption per token decreased progressively with layer index, aligning with trends in evaluation time per token. This correlation suggests that later layers may offer significant energy and time savings when approximated.
+    Energy consumption per token decreased progressively with layer index, aligning with trends in evaluation time per token.
+    This correlation might suggest that later layers may offer significant energy and time savings when approximated, but the trend is very suspicious.
+    This may be due to ``noise'' in the test environment; for example, driver caching could be causing the performance.
+
+    Whether these results are due to ``noise'' in the execution environment can be confirmed by running the tests in reverse - start by testing pruning against layer 31, and work backwards to layer 0.
+    The test framework has been updated to allow this, and preliminary results do suggest that this ``noise'' is an issue, but more exploration and more tests need to be done to confirm that this is the case.
+
+    Results are graphed in Figures~\ref{fig:energy} and~\ref{fig:time}
 
     \subsection{Memory Usage}
-    Allocated memory usage remained consistent across all layers, with negligible fluctuations attributed to noise. This indicates that the framework's pruning strategy maintains parameter efficiency.
+    Allocated memory usage remained consistent across all layers, with negligible fluctuations attributed to noise.
+    This is to be expected, because the exact same number of parameters were pruned per layer, so allocated memory should remain constant.
+
+    Results are graphed in Figure ~\ref{fig:memory}.
+
+    \begin{figure}[!htbp]
+        \centerline{\includegraphics[width=1.0\columnwidth]{perplexity}}
+        \caption{Perplexity Pruned vs Baseline}
+        \label{fig:perplexity}
+    \end{figure}
+
+    \begin{figure}[!htbp]
+        \centerline{\includegraphics[width=1.0\columnwidth]{energy}}
+        \caption{Energy Pruned vs Baseline}
+        \label{fig:energy}
+    \end{figure}
+
+    \begin{figure}[!htbp]
+        \centerline{\includegraphics[width=1.0\columnwidth]{time}}
+        \caption{Execution Time Pruned vs Baseline}
+        \label{fig:time}
+    \end{figure}
+
+    \begin{figure}[!htbp]
+        \centerline{\includegraphics[width=1.0\columnwidth]{memory}}
+        \caption{Allocated Memory Pruned vs Baseline}
+        \label{fig:memory}
+    \end{figure}
 
     \section{Future Work}
-    Future work includes enabling head pruning based on different strategies, measuring progressive pruning effects, generating heatmaps for head-level sensitivity, and expanding the framework to support additional components and architectures. This will provide deeper insights into the interactions between components and allow for broader applicability.
+    Future work will include expansion of the framework and refinement of metric measurements.
+
+    Some examples:
+
+    \begin{itemize}
+        \item Add support for additional decoder models.
+        \item Add support for additional transformer types (i.e.\ encoder and encoder-decoder).
+        \item Improve rudimentary per layer sensitivity tests, for example add progressive pruning to measure sensitivity as attention heads are pruned one by one.
+        \item Generate heatmaps for head-level sensitivity.
+        \item Expand support for pruning additional components in the transformer models, e.g.\ support MLP pruning in the transformer blocks.
+        \item Add support for additional approximation techniques, like parameter quantization.
+        \item Add support for importance measurements for components e.g.\ add support for Taylor Series importance measures, as demonstrated in the ``LLM Pruner'' research paper~\cite{ma2023llm}.
+        \item Integrate with the industry standard lm-evaluation-harness~\cite{eval-harness} to add support for additional metrics.
+        \item Add support for other Transformer model backends like llama.cpp~\cite{gerganov_llama_cpp} and vLLM~\cite{kwon2023efficient}.
+    \end{itemize}
+
+   These potential improvements will provide deeper insights into the interactions between LLM components and allow for broader applicability.
+
+    \section*{Code Repository}
+
+    The source code for the framework, and the raw metric measurements as CSV files can be found in the llm-approximation repository on Github~\cite{llm_approximation}.
+
+    \section*{Usage of Generative AI}
+    ChatGPT~\cite{chatgpt_2024} was used for general help with PyTorch, the Transformers Library, and LaTeX throughout this project.
 
     \section*{Acknowledgment}
-    The author would like to thank the Dr. Ourania Spantidi from the Embedded AI Systems Lab for her support and feedback in conducting this study.
+    The author would like to thank the Dr. Ourania Spantidi from the Embedded AI Systems Lab for her support and feedback in conducting this research.
 
     \bibliography{bibliography}
     \bibliographystyle{IEEEtran}
