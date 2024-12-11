@@ -22,9 +22,12 @@ T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
     \maketitle
 
     \begin{abstract}
-        This paper proposes a framework for pruning multi-head attention in decoder-based Large Language Models (LLMs).
+        This paper proposes a framework for pruning the multi-head attention mechanism in decoder-based Large Language Models (LLMs).
+
         Unlike existing approaches, this attention head framework provides holistic analysis capabilities by integrating multiple evaluation metrics such as perplexity, energy consumption, evaluation time, and memory usage.
+
         As a proof-of-concept, the current methodology focuses on the Llama 3 8B architecture, performing layer-wise pruning and sensitivity analysis to measure the effects of approximating its attention mechanism.
+
         Results demonstrate potential savings in computational resources, highlighting specific layers as candidates for attention head approximation.
         Future work aims to extend this framework to additional components and model architectures.
     \end{abstract}
@@ -46,39 +49,129 @@ T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
     but the sheer size and complexity of LLMs makes this incredibly challenging.
 
     Sensitivity to pruning, the removal of neurons (weight matrix rows) is the initial phase of researching this sensitivity.
-    This work focuses on multi-head attention pruning in decoder transformers, introducing a structured framework for evaluating the impact of pruning on various model components.
+    Specifically, this work focuses on multi-head attention pruning in decoder transformers, introducing a structured framework for evaluating the impact of pruning on various model components.
 
     This research addresses limitations in the current literature, which often narrowly focus on specific metrics like perplexity and lack a unified framework for holistic analysis.
+
     By leveraging a multi-metric approach, we begin to explore the systemic effects of pruning, aiming to establish a more comprehensive understanding of parameter sensitivity in LLMs.
 
     \section{Related Works}
 
-    \section{Motivation and Background}
-    The initial goal of this study was to understand methodologies for determining neuron sensitivity in LLMs, revealed through a literature review to be fragmented and narrowly scoped.
-    Existing studies often focus on specific optimizations, such as vertical parameter pruning, but fail to account for broader metrics like energy consumption or evaluation time.
+    An initial literature review was performed to identify gaps in the current research.
+    Using Google Scholar\cite{googlescholar}, here are the gaps identified in the top 5 relevant works for the query ``llm pruning'':
 
-    Key limitations in the reviewed literature include:
-    \begin{itemize}
-        \item Inability to prune arbitrary heads.
-        \item Lack of per-token execution time and energy consumption measurements.
-        \item Limited support for models using Grouped Query Attention.
-        \item Narrow focus on singular types of optimizations.
-    \end{itemize}
-    These limitations underscore the need for a holistic framework that supports systematic analysis of LLM components.
-
-    \section{Proposed Framework}
-    This work proposes a structured framework targeting the Llama 3 decoder architecture. The framework evaluates the effects of multi-head attention pruning across four key metrics:
     \begin{enumerate}
-        \item Perplexity
-        \item Energy consumption per token
-        \item Evaluation time per token
-        \item Allocated memory usage
+        \item Llm-pruner: On the structural pruning of large language models (2023)~\cite{ma2023llm}
+        \begin{itemize}
+            \item Does not support pruning the LLama3 architecture, misaligining query, key, and value vectors.
+            \item Does not support the pruning of arbitrary heads.
+            \item No measurement of per-token execution time and energy consumption.
+        \end{itemize}
+        \item LLM Pruning and Distillation in Practice: The Minitron Approach (2024)~\cite{sreenivas2024llm}
+        \begin{itemize}
+            \item Prunes the MLP hidden dimension, hidden dimension (embeddings), and layers.
+            \item Does not support the pruning of arbitrary heads.
+            \item No measurement of per-token execution time and energy consumption.
+        \end{itemize}
+        \item Everybody Prune Now: Structured Pruning of LLMs with only Forward Passes (2024)~\cite{dery2024everybodyprunenowstructured}
+        \begin{itemize}
+            \item Prunes heads, but does not measure sensitivity to the pruning of heads in different layers.
+            \item No measurement of per-token execution time and energy consumption.
+        \end{itemize}
+        \item A Simple And Effective Pruning Approach For Large Language Models (2024) ~\cite{sun2024simpleeffectivepruningapproach}
+        \begin{itemize}
+            \item Prunes heads, but does not measure sensitivity to the pruning of heads in different layers.
+            \item No measurement of per-token execution time and energy consumption.
+        \end{itemize}
+        \item Large Language Model Pruning (2024) ~\cite{huang2024largelanguagemodelpruning}
+        \begin{itemize}
+            \item Prunes heads, but does not measure sensitivity to the pruning of heads in different layers.
+            \item No measurement of per-token execution time and energy consumption.
+        \end{itemize}
     \end{enumerate}
 
-    The pruning methodology involves layer-wise removal of attention heads, including associated key and value heads orphaned by pruning. Sensitivity scores are calculated by comparing the performance of pruned layers against an unpruned baseline, allowing for a detailed analysis of which layers and components are more resilient to pruning.
+    To conclude, this research fills a gap in current literature in the following ways:
+
+    \begin{enumerate}
+        \item Provides a framework to structurally prune all modules of a Decoder-based LLM
+        \begin{itemize}
+            \item Currently the Llama model is supported with Decoder Layer and Attention Head pruning implemented.
+            \item All other layers will be eventually supported along with additional LLM models.
+        \end{itemize}
+        \item Supports structural pruning for grouped attention models.
+        \item Records energy usage and execution time per token as fundamental metrics.
+        \item Measures the holistic sensitivity of a Decoder-based LLM to the pruning of all modules.
+    \end{enumerate}
+
+    \section{Proposed Framework}
+    This work proposes a structured framework initially targeting the Llama 3 decoder architecture.
+
+    \subsection{Pruning Attention Heads for Group Query Attention Models}
+
+    The pruning methodology involves layer-wise removal of attention heads, including associated key and value heads orphaned by pruning.
+
+    \subsection{Metrics}
+
+    The framework evaluates the effects of multi-head attention pruning across four key metrics:
+
+    \begin{enumerate}
+        \item Perplexity
+        \begin{itemize}
+            \item Formally:
+            \\
+            \begin{equation}
+                PP(p) = 2^{H(p)} = 2^{-\sum_x p(x) \log_2 p(x)}
+                \label{eq:perplexity}
+            \end{equation}
+            \\
+            Where \textit{H(p)} is the entropy of the probability distribution \textit{p}, \textit{p(x)} is the probability of a given token, and \textit{x} ranges over the vocabulary of the model.
+            \item This is the model's confidence in its predicted tokens, lower values are better.~\cite{jelinek1977perplexity}.
+            \item Comparison to baseline:
+            \\
+            \begin{equation}
+                \frac{PP_{baseline}}{PP_{pruned}}
+                \label{eq:perplexity_comparison}
+            \end{equation}
+        \end{itemize}
+        \item Energy consumption per token
+        \begin{itemize}
+            \item Measured using Nvidia's pynvml library~\cite{pynvml}, captured in milli-joules.
+            \item Comparison to baseline:
+            \\
+            \begin{equation}
+                \frac{W_{pruned}}{W_{baseline}}
+                \label{eq:energy_comparison}
+            \end{equation}
+        \end{itemize}
+        \item Evaluation time per token
+        \begin{itemize}
+            \item Comparison to baseline:
+            \\
+            \begin{equation}
+                \frac{T_{pruned}}{T_{baseline}}
+                \label{eq:evaluation_time_comparison}
+            \end{equation}
+        \end{itemize}
+        \item Allocated memory usage
+        \begin{itemize}
+            \item This is the static memory allocated to the model and its parameters.
+            \item Fetched using \textit{torch.cuda.memory\_allocated()}
+            \item Comparison to baseline:
+            \\
+            \begin{equation}
+                \frac{M_{pruned}}{M_{baseline}}
+                \label{eq:memory_time_comparison}
+            \end{equation}
+        \end{itemize}
+    \end{enumerate}
+
+
+    Sensitivity scores are calculated by comparing the performance of pruned layers against an unpruned baseline, allowing for a detailed analysis of which layers and components are more resilient to pruning.
 
     \section{Experimental Setup}
-    The framework was tested on the Llama 3 8b model, consisting of 32 decoder layers and 32 attention heads per layer. The dataset used for evaluation was wikitext-2-v1. Each layer was assessed with a batch size of 5 across 25 prompts, running on an RTX 4090 GPU with the desktop environment disabled.
+    The framework was tested on the Llama 3 8B model, consisting of 32 decoder layers and 32 attention heads per layer.
+    The dataset used for evaluation was wikitext-2-v1.
+    Each layer was assessed with a batch size of 5 across 25 prompts, running on an RTX 4090 GPU with the desktop environment disabled.
 
     Four metrics were collected for each pruned layer and compared to the unpruned baseline:
     \begin{itemize}
