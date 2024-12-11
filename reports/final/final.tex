@@ -1,7 +1,6 @@
 \documentclass[conference]{IEEEtran}
 \IEEEoverridecommandlockouts
 % The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
-\usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{algorithmic}
 \usepackage{graphicx}
@@ -58,7 +57,7 @@ T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
     \section{Related Works}
 
     An initial literature review was performed to identify gaps in the current research.
-    Using Google Scholar\cite{googlescholar}, here are the gaps identified in the top 5 relevant works for the query ``llm pruning'':
+    Using Google Scholar\cite{GoogleScholar}, here are the gaps identified in the top 5 relevant works for the query ``llm pruning'':
 
     \begin{enumerate}
         \item Llm-pruner: On the structural pruning of large language models (2023)~\cite{ma2023llm}
@@ -104,13 +103,54 @@ T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
     \end{enumerate}
 
     \section{Proposed Framework}
-    This work proposes a structured framework initially targeting the Llama 3 decoder architecture.
+    This work proposes a structured framework, initially supporting the Llama 3 decoder architecture.
+    The Huggingface Transformers library is used as a base for both pruning and evaluation of pruned and non-pruned
+    (baseline) models~\cite{wolf2020huggingfacestransformersstateoftheartnatural}.
+
+    The pruning framework enables the removal of arbitrary attention heads across arbitrary decoder layers,
+    including associated key and value heads orphaned by pruning.
+    For purposes of this proof-of-concept, the pruning methodology involves layer-wise removal of attention heads,
+    measuring sensitivity of each layer to attention head pruning using four separate metrics.
 
     \subsection{Pruning Attention Heads for Group Query Attention Models}
 
-    The pruning methodology involves layer-wise removal of attention heads, including associated key and value heads orphaned by pruning.
+    The Transformers library provides a de-facto abstract method, \textit{PreTrainedModel.prune\_heads}, for pruning a model's attention heads.
+    This method is not implemented for many model types, including the Llama architecture.
+    Implementing this method for the Llama 3 is particularly challenging due to its Grouped Query Attention architecture.
 
-    \subsection{Metrics}
+    The attention mechanism in LLMs is made up of 3 projected vectors: Query, Key, and Value vectors.
+    Each vector can be divided into one or more attention heads: Query Heads (Q Heads), Key Heads, and Value Heads
+    (often referred together as KV Heads.)
+    These vectors are combined together in the Scaled Dot Product Attention operation ~\cite{vaswani2023attentionneed}.
+
+    Grouped Query Attention (GQA) is an implementation of the attention mechanism that aims to combine the speed of
+    the Multi-Query Attention (MQA) implementation and the quality of Multi-Head Attention (MHA) implementation.
+    MQA shares a single KV head across all query heads; MHA has a single KV head per query head.
+    GQA compromises by sharing a limited number KV heads between multiple query heads grouped together~\cite{ainslie2023gqatraininggeneralizedmultiquery}.
+
+    Structural pruning was thus implemented based on query attention heads, eliminating KV Heads only if the entire Q Head group has been pruned.
+    A visualization of this pruning is provided in figures~\ref{fig:gqa1},~\ref{fig:gqa2},~\ref{fig:gqa3}.
+
+    \begin{figure}[!htbp]
+        \centerline{\includegraphics[width=0.66\columnwidth]{Unpruned GQA}}
+        \caption{An unpruned GQA with 2 Groups.}
+        \label{fig:gqa1}
+    \end{figure}
+
+    \begin{figure}[!htbp]
+        \centerline{\includegraphics[width=0.66\columnwidth]{Pruned GQA 1}}
+        \caption{A pruned GQA, with 1 attention head pruned.}
+        \label{fig:gqa2}
+    \end{figure}
+
+    \begin{figure}[!htbp]
+        \centerline{\includegraphics[width=0.66\columnwidth]{Pruned GQA 2}}
+        \caption{A pruned GQA, with an entire group pruned, allowing the removal of a KV head.}
+        \label{fig:gqa3}
+    \end{figure}
+    \clearpage
+
+    \subsection{The Four Key Metrics}
 
     The framework evaluates the effects of multi-head attention pruning across four key metrics:
 
@@ -125,7 +165,7 @@ T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
             \end{equation}
             \\
             Where \textit{H(p)} is the entropy of the probability distribution \textit{p}, \textit{p(x)} is the probability of a given token, and \textit{x} ranges over the vocabulary of the model.
-            \item This is the model's confidence in its predicted tokens, lower values are better.~\cite{jelinek1977perplexity}.
+            \item This is the model's confidence in its predicted tokens, lower values are better~\cite{jelinek1977perplexity}.
             \item Comparison to baseline:
             \\
             \begin{equation}
@@ -135,7 +175,7 @@ T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
         \end{itemize}
         \item Energy consumption per token
         \begin{itemize}
-            \item Measured using Nvidia's pynvml library~\cite{pynvml}, captured in milli-joules.
+            \item Measured using Nvidia's pynvml library~\cite{nvidia_ml_py}, captured in milli-joules.
             \item Comparison to baseline:
             \\
             \begin{equation}
@@ -165,21 +205,18 @@ T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
         \end{itemize}
     \end{enumerate}
 
-
     Sensitivity scores are calculated by comparing the performance of pruned layers against an unpruned baseline, allowing for a detailed analysis of which layers and components are more resilient to pruning.
 
     \section{Experimental Setup}
-    The framework was tested on the Llama 3 8B model, consisting of 32 decoder layers and 32 attention heads per layer.
-    The dataset used for evaluation was wikitext-2-v1.
-    Each layer was assessed with a batch size of 5 across 25 prompts, running on an RTX 4090 GPU with the desktop environment disabled.
+    The framework was tested on the Llama 3 8B model, consisting of 32 decoder layers and 32 attention heads per layer with a group size of 4~\cite{grattafiori2024llama3herdmodels}.
 
-    Four metrics were collected for each pruned layer and compared to the unpruned baseline:
-    \begin{itemize}
-        \item Perplexity
-        \item Energy consumption per token
-        \item Evaluation time per token
-        \item Allocated memory usage
-    \end{itemize}
+    The dataset used for evaluation was wikitext-2-v1~\cite{merity2016pointersentinelmixturemodels}.
+    Each layer was assessed with a batch size of 5 across 25 prompts, running on an RTX 4090 GPU with the desktop environment disabled.
+    The only process accessing CUDA during the test was the pruning framework, verified using the \textit{nvidia-smi} command line tool~\cite{nvidia_smi}.
+    Persistence mode was enabled using \texit{nvidia-smi} to ensure the driver was not unloaded mid-test.
+
+    Metrics were captured on a per-layer basis under two conditions: pruning all attention heads, and pruning every other attention head, the results averaged together.
+    This is a rudimentary combination designed to gain an understanding of per-layer sensitivity within time-constraints: future tests will be more comprehensive, using progressive attention head pruning to collect more comprehensive metrics on a per-layer basis with the grain of the attention head.
 
     \section{Results and Discussion}
     \subsection{Perplexity}
@@ -195,14 +232,9 @@ T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
     Future work includes enabling head pruning based on different strategies, measuring progressive pruning effects, generating heatmaps for head-level sensitivity, and expanding the framework to support additional components and architectures. This will provide deeper insights into the interactions between components and allow for broader applicability.
 
     \section*{Acknowledgment}
-    The author would like to thank the Embedded AI Systems Lab for their support and resources in conducting this study.
+    The author would like to thank the Dr. Ourania Spantidi from the Embedded AI Systems Lab for her support and feedback in conducting this study.
 
-    \begin{thebibliography}{00}
-
-        \bibitem{kindig2024} B. Kindig, ``AI Power Consumption Rapidly Becoming Mission Critical,'' Forbes, Jun. 2024. [Online]. Available: https://www.forbes.com/sites/bethkindig/2024/06/20/ai-power-consumption-rapidly-becoming-mission-critical/. [Accessed: Sep. 16, 2024].
-        \bibitem{b1} G. Eason, B. Noble, and I. N. Sneddon, ``On certain integrals of Lipschitz-Hankel type involving products of Bessel functions,'' Phil. Trans. Roy. Soc. London, vol. A247, pp. 529--551, April 1955.
-        \bibitem{b2} J. Clerk Maxwell, A Treatise on Electricity and Magnetism, 3rd ed., vol. 2. Oxford: Clarendon, 1892, pp.68--73.
-        \bibitem{b3} I. S. Jacobs and C. P. Bean, ``Fine particles, thin films and exchange anisotropy,'' in Magnetism, vol. III, G. T. Rado and H. Suhl, Eds. New York: Academic, 1963, pp. 271--350.
-    \end{thebibliography}
+    \bibliography{bibliography}
+    \bibliographystyle{IEEEtran}
 
 \end{document}
